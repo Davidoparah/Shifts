@@ -1,0 +1,200 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>
+      <ion-text color="primary">Worker Dashboard</ion-text>
+    </ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="logout()" color="danger">
+        <ion-icon name="log-out-outline" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+
+  <ion-toolbar>
+    <ion-segment [(ngModel)]="selectedSegment" (ionChange)="segmentChanged($event)">
+      <ion-segment-button value="available">
+        <ion-icon name="briefcase-outline"></ion-icon>
+        <ion-label>Available</ion-label>
+      </ion-segment-button>
+      <ion-segment-button value="upcoming">
+        <ion-icon name="calendar-outline"></ion-icon>
+        <ion-label>Upcoming</ion-label>
+      </ion-segment-button>
+      <ion-segment-button value="completed">
+        <ion-icon name="checkmark-done-outline"></ion-icon>
+        <ion-label>Completed</ion-label>
+      </ion-segment-button>
+      <ion-segment-button value="profile">
+        <ion-icon name="person-outline"></ion-icon>
+        <ion-label>Profile</ion-label>
+      </ion-segment-button>
+    </ion-segment>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <!-- Profile Section -->
+  <div *ngIf="selectedSegment === 'profile'" class="ion-padding">
+    <ion-card *ngIf="profile">
+      <ion-card-header>
+        <ion-avatar class="ion-margin-bottom">
+          <img [src]="profile.avatar || 'assets/default-avatar.png'" alt="Profile picture">
+        </ion-avatar>
+        <ion-card-title>{{ profile.name }}</ion-card-title>
+        <ion-card-subtitle>{{ profile.email }}</ion-card-subtitle>
+      </ion-card-header>
+
+      <ion-card-content>
+        <ion-list lines="none">
+          <ion-item>
+            <ion-icon name="star-outline" slot="start"></ion-icon>
+            <ion-label>
+              <h3>Rating</h3>
+              <p>{{ profile.rating }}/5</p>
+            </ion-label>
+          </ion-item>
+
+          <ion-item>
+            <ion-icon name="briefcase-outline" slot="start"></ion-icon>
+            <ion-label>
+              <h3>Completed Shifts</h3>
+              <p>{{ profile.completedShifts }}</p>
+            </ion-label>
+          </ion-item>
+
+          <ion-item *ngIf="profile.phone">
+            <ion-icon name="call-outline" slot="start"></ion-icon>
+            <ion-label>
+              <h3>Phone</h3>
+              <p>{{ profile.phone }}</p>
+            </ion-label>
+          </ion-item>
+
+          <ion-item *ngIf="profile.address">
+            <ion-icon name="location-outline" slot="start"></ion-icon>
+            <ion-label>
+              <h3>Address</h3>
+              <p>{{ profile.address }}</p>
+            </ion-label>
+          </ion-item>
+
+          <ion-item *ngIf="profile.bio">
+            <ion-icon name="document-text-outline" slot="start"></ion-icon>
+            <ion-label>
+              <h3>Bio</h3>
+              <p>{{ profile.bio }}</p>
+            </ion-label>
+          </ion-item>
+        </ion-list>
+      </ion-card-content>
+    </ion-card>
+
+    <ion-list>
+      <ion-item button routerLink="/worker/edit-profile">
+        <ion-icon name="create-outline" slot="start"></ion-icon>
+        <ion-label>Edit Profile</ion-label>
+      </ion-item>
+
+      <ion-item button routerLink="/worker/edit-skills">
+        <ion-icon name="construct-outline" slot="start"></ion-icon>
+        <ion-label>Edit Skills</ion-label>
+      </ion-item>
+
+      <ion-item button routerLink="/worker/edit-availability">
+        <ion-icon name="time-outline" slot="start"></ion-icon>
+        <ion-label>Edit Availability</ion-label>
+      </ion-item>
+
+      <ion-item button (click)="logout()" color="danger">
+        <ion-icon name="log-out-outline" slot="start"></ion-icon>
+        <ion-label>Logout</ion-label>
+      </ion-item>
+    </ion-list>
+  </div>
+
+  <!-- Available Shifts Section -->
+  <div *ngIf="selectedSegment === 'available'" class="ion-padding">
+    <ion-list>
+      <ion-list-header>
+        <ion-label>Available Shifts</ion-label>
+      </ion-list-header>
+
+      <ion-item *ngFor="let shift of availableShifts">
+        <ion-label>
+          <h2>{{ shift.title }}</h2>
+          <p>Date: {{ shift.date | date }}</p>
+          <p>Time: {{ shift.startTime }} - {{ shift.endTime }}</p>
+          <p>Location: {{ shift.location }}</p>
+          <p>Rate: ${{ shift.rate }}/hr</p>
+        </ion-label>
+        <ion-button slot="end" (click)="applyForShift(shift)">Apply</ion-button>
+      </ion-item>
+
+      <ion-item *ngIf="availableShifts.length === 0">
+        <ion-label class="ion-text-center">
+          No available shifts at the moment.
+        </ion-label>
+      </ion-item>
+    </ion-list>
+  </div>
+
+  <!-- Upcoming Shifts Section -->
+  <div *ngIf="selectedSegment === 'upcoming'" class="ion-padding">
+    <ion-list>
+      <ion-list-header>
+        <ion-label>Upcoming Shifts</ion-label>
+      </ion-list-header>
+
+      <ion-item *ngFor="let shift of upcomingShifts">
+        <ion-label>
+          <h2>{{ shift.title }}</h2>
+          <p>Date: {{ shift.date | date }}</p>
+          <p>Time: {{ shift.startTime }} - {{ shift.endTime }}</p>
+          <p>Location: {{ shift.location }}</p>
+          <p>Rate: ${{ shift.rate }}/hr</p>
+        </ion-label>
+        <ion-button slot="end" color="danger" (click)="cancelShift(shift)">
+          Cancel
+        </ion-button>
+        <ion-button slot="end" color="success" (click)="startShift(shift)">
+          Start
+        </ion-button>
+      </ion-item>
+
+      <ion-item *ngIf="upcomingShifts.length === 0">
+        <ion-label class="ion-text-center">
+          No upcoming shifts.
+        </ion-label>
+      </ion-item>
+    </ion-list>
+  </div>
+
+  <!-- Completed Shifts Section -->
+  <div *ngIf="selectedSegment === 'completed'" class="ion-padding">
+    <ion-list>
+      <ion-list-header>
+        <ion-label>Completed Shifts</ion-label>
+      </ion-list-header>
+
+      <ion-item *ngFor="let shift of completedShifts">
+        <ion-label>
+          <h2>{{ shift.title }}</h2>
+          <p>Date: {{ shift.date | date }}</p>
+          <p>Time: {{ shift.startTime }} - {{ shift.endTime }}</p>
+          <p>Location: {{ shift.location }}</p>
+          <p>Rate: ${{ shift.rate }}/hr</p>
+          <p *ngIf="shift.rating">Rating: {{ shift.rating }}/5</p>
+        </ion-label>
+      </ion-item>
+
+      <ion-item *ngIf="completedShifts.length === 0">
+        <ion-label class="ion-text-center">
+          No completed shifts yet.
+        </ion-label>
+      </ion-item>
+    </ion-list>
+  </div>
+
+  <!-- Loading Spinner -->
+  <ion-spinner *ngIf="isLoading" class="spinner-center"></ion-spinner>
+</ion-content>

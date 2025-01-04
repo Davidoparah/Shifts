@@ -1,0 +1,49 @@
+
+
+# Backend Development Rules (Ruby/MongoDB API)
+
+# Ruby Core Files
+*.rb                        # Ruby source files
+*.rake                      # Rake task files
+config.ru                   # Rack configuration
+Gemfile                     # Ruby dependencies
+Gemfile.lock               # Locked Ruby dependencies
+
+# MongoDB Files
+*.model.rb                # Mongoid models
+mongoid.yml              # MongoDB configuration
+*.repository.rb         # MongoDB repositories
+*.query.rb             # MongoDB queries
+*.index.rb            # MongoDB indexes
+*.migration.rb       # MongoDB migrations
+*.seed.rb           # Database seeds
+
+# API Structure
+app/                    # Application code
+  models/              # Data models
+  controllers/        # Request handlers
+  services/          # Business logic
+  workers/          # Background jobs
+config/              # Rails configuration
+lib/                # Library code
+
+# Testing
+*_spec.rb           # RSpec tests
+.rspec             # RSpec configuration
+spec_helper.rb     # RSpec helper
+rails_helper.rb    # Rails test helper
+
+# API Documentation
+swagger.json       # API documentation
+api_docs/         # API documentation directory
+
+# Database
+dump/             # MongoDB dumps
+*.bson           # BSON files
+*.metadata.json  # Metadata files
+indexes/         # Index definitions
+aggregations/    # Aggregation pipelines
+
+# Configuration
+.env.*           # Environment variables
+vendor/          # Ruby dependencies

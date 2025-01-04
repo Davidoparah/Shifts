@@ -1,0 +1,59 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/worker"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Edit Availability</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <ion-list>
+    <ion-item *ngFor="let day of days">
+      <ion-label>
+        <h2>{{ day | titlecase }}</h2>
+        <ion-list>
+          <ion-item *ngFor="let slot of schedule[day].slots; let i = index" lines="none">
+            <ion-row class="ion-align-items-center" style="width: 100%">
+              <ion-col size="5">
+                <ion-datetime display-format="h:mm A" picker-format="h:mm A" [(ngModel)]="slot.startTime">
+                </ion-datetime>
+              </ion-col>
+              <ion-col size="1" class="ion-text-center">to</ion-col>
+              <ion-col size="5">
+                <ion-datetime display-format="h:mm A" picker-format="h:mm A" [(ngModel)]="slot.endTime">
+                </ion-datetime>
+              </ion-col>
+              <ion-col size="1">
+                <ion-button fill="clear" color="danger" (click)="removeTimeSlot(day, i)">
+                  <ion-icon name="close-circle"></ion-icon>
+                </ion-button>
+              </ion-col>
+            </ion-row>
+          </ion-item>
+        </ion-list>
+      </ion-label>
+
+      <ion-button slot="end" fill="clear" (click)="addTimeSlot(day)">
+        <ion-icon name="add-circle-outline"></ion-icon>
+        Add Time Slot
+      </ion-button>
+    </ion-item>
+  </ion-list>
+
+  <div class="ion-padding">
+    <ion-button expand="block" (click)="saveAvailability()" [disabled]="isLoading">
+      Save Changes
+    </ion-button>
+  </div>
+</ion-content>
+
+<ion-spinner *ngIf="isLoading" class="spinner-center"></ion-spinner>
+
+<ion-item *ngIf="errorMessage" class="error-message">
+  <ion-icon name="alert-circle-outline" slot="start"></ion-icon>
+  <ion-label>{{ errorMessage }}</ion-label>
+  <ion-button slot="end" fill="clear" (click)="dismissError()">
+    <ion-icon name="close-outline"></ion-icon>
+  </ion-button>
+</ion-item>

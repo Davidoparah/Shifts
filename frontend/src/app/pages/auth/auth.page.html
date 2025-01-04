@@ -1,0 +1,110 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>{{ isLogin ? 'Login' : 'Register' }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <div class="auth-container">
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>{{ isLogin ? 'Login' : 'Register' }}</ion-card-title>
+        <ion-card-subtitle *ngIf="!isLogin">All fields are required</ion-card-subtitle>
+      </ion-card-header>
+
+      <ion-card-content>
+        <form [formGroup]="authForm" (ngSubmit)="onSubmit()">
+          <ion-list>
+            <ion-item [class.ion-invalid]="email?.invalid && email?.touched"
+              [class.ion-valid]="email?.valid && email?.touched">
+              <ion-label position="floating">Email</ion-label>
+              <ion-input type="email" formControlName="email"></ion-input>
+              <ion-note slot="error" *ngIf="email?.errors?.['required'] && email?.touched">
+                Email is required
+              </ion-note>
+              <ion-note slot="error" *ngIf="email?.errors?.['email'] && email?.touched">
+                Please enter a valid email
+              </ion-note>
+            </ion-item>
+
+            <ion-item [class.ion-invalid]="password?.invalid && password?.touched"
+              [class.ion-valid]="password?.valid && password?.touched">
+              <ion-label position="floating">Password</ion-label>
+              <ion-input type="password" formControlName="password"></ion-input>
+              <ion-note slot="error" *ngIf="password?.errors?.['required'] && password?.touched">
+                Password is required
+              </ion-note>
+              <ion-note slot="error" *ngIf="password?.errors?.['minlength'] && password?.touched">
+                Password must be at least 6 characters
+              </ion-note>
+            </ion-item>
+
+            <ng-container *ngIf="!isLogin">
+              <ion-item
+                [class.ion-invalid]="authForm.get('password_confirmation')?.invalid && authForm.get('password_confirmation')?.touched"
+                [class.ion-valid]="authForm.get('password_confirmation')?.valid && authForm.get('password_confirmation')?.touched">
+                <ion-label position="floating">Confirm Password</ion-label>
+                <ion-input type="password" formControlName="password_confirmation"></ion-input>
+                <ion-note slot="error"
+                  *ngIf="authForm.get('password_confirmation')?.errors?.['required'] && authForm.get('password_confirmation')?.touched">
+                  Password confirmation is required
+                </ion-note>
+                <ion-note slot="error"
+                  *ngIf="authForm.get('password_confirmation')?.errors?.['mismatch'] && authForm.get('password_confirmation')?.touched">
+                  Passwords do not match
+                </ion-note>
+              </ion-item>
+
+              <ion-item [class.ion-invalid]="name?.invalid && name?.touched"
+                [class.ion-valid]="name?.valid && name?.touched">
+                <ion-label position="floating">Name</ion-label>
+                <ion-input type="text" formControlName="name"></ion-input>
+                <ion-note slot="error" *ngIf="name?.errors?.['required'] && name?.touched">
+                  Name is required
+                </ion-note>
+              </ion-item>
+
+              <ion-item>
+                <ion-label position="floating">Role</ion-label>
+                <ion-select formControlName="role" interface="action-sheet">
+                  <ion-select-option value="PLATFORM_OWNER">Platform Owner</ion-select-option>
+                  <ion-select-option value="BUSINESS_OWNER">Business Owner</ion-select-option>
+                  <ion-select-option value="WORKER">Worker</ion-select-option>
+                </ion-select>
+              </ion-item>
+
+              <ion-item *ngIf="['BUSINESS_OWNER', 'WORKER'].includes(authForm.get('role')?.value)"
+                [class.ion-invalid]="authForm.get('business')?.invalid && authForm.get('business')?.touched"
+                [class.ion-valid]="authForm.get('business')?.valid && authForm.get('business')?.touched">
+                <ion-label position="floating">Business ID</ion-label>
+                <ion-input type="text" formControlName="business"></ion-input>
+                <ion-note slot="error"
+                  *ngIf="authForm.get('business')?.errors?.['required'] && authForm.get('business')?.touched">
+                  Business ID is required for Business Owners and Workers
+                </ion-note>
+              </ion-item>
+            </ng-container>
+          </ion-list>
+
+          <div class="ion-padding">
+            <ion-button expand="block" type="submit" [disabled]="authForm.invalid || isLoading">
+              <ion-spinner name="crescent" *ngIf="isLoading"></ion-spinner>
+              <span *ngIf="!isLoading">{{ isLogin ? 'Login' : 'Register' }}</span>
+            </ion-button>
+
+            <ion-button expand="block" fill="clear" (click)="toggleAuthMode()" [disabled]="isLoading">
+              {{ isLogin ? 'Need an account? Register' : 'Have an account? Login' }}
+            </ion-button>
+          </div>
+
+          <!-- Debug info -->
+          <div *ngIf="!authForm.valid" class="ion-padding-top">
+            <ion-text color="danger">
+              <p>Form is invalid. Please check all fields.</p>
+            </ion-text>
+          </div>
+        </form>
+      </ion-card-content>
+    </ion-card>
+  </div>
+</ion-content>

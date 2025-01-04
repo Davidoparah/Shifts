@@ -1,0 +1,54 @@
+source "https://rubygems.org"
+
+# Use specific Ruby version
+ruby "3.3.6"
+
+# Rails itself
+gem "rails", "~> 7.1.2"
+
+# MongoDB
+gem "mongoid", "~> 8.1.0"
+gem "mongoid-geospatial"
+
+# Use the Puma web server
+gem "puma", ">= 5.0"
+
+# Build JSON APIs with ease
+gem "jbuilder"
+
+# Use Redis adapter to run Action Cable in production
+gem "redis", ">= 4.0.1"
+
+# Use Kredis to get higher-level data types in Redis
+# gem "kredis"
+
+# Use Active Model has_secure_password
+gem "bcrypt", "~> 3.1.7"
+
+# JWT for token-based authentication
+gem "jwt"
+
+# Load environment variables from .env file
+gem "dotenv-rails"
+
+# Windows does not include zoneinfo files, so bundle the tzinfo-data gem
+gem "tzinfo-data", platforms: %i[ windows jruby ]
+
+# Reduces boot times through caching; required in config/boot.rb
+gem "bootsnap", require: false
+
+# Use Active Storage variants
+# gem "image_processing", "~> 1.2"
+
+# Use Rack CORS for handling Cross-Origin Resource Sharing (CORS)
+gem "rack-cors"
+
+group :development, :test do
+  # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
+  gem "debug", platforms: %i[ mri windows ]
+end
+
+group :development do
+  # Speed up commands on slow machines / big apps [https://github.com/rails/spring]
+  # gem "spring"
+end 

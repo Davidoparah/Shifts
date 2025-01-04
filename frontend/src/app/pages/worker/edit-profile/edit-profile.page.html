@@ -1,0 +1,50 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/worker"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Edit Profile</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <form [formGroup]="profileForm" (ngSubmit)="saveProfile()">
+    <ion-list>
+      <ion-item>
+        <ion-label position="stacked">Phone</ion-label>
+        <ion-input type="tel" formControlName="phone"></ion-input>
+      </ion-item>
+
+      <ion-item>
+        <ion-label position="stacked">Address</ion-label>
+        <ion-input type="text" formControlName="address"></ion-input>
+      </ion-item>
+
+      <ion-item>
+        <ion-label position="stacked">Bio</ion-label>
+        <ion-textarea rows="4" formControlName="bio"></ion-textarea>
+      </ion-item>
+
+      <ion-item>
+        <ion-label position="stacked">Hourly Rate ($)</ion-label>
+        <ion-input type="number" formControlName="hourly_rate"></ion-input>
+      </ion-item>
+    </ion-list>
+
+    <div class="ion-padding">
+      <ion-button expand="block" type="submit" [disabled]="!profileForm.valid || isLoading">
+        Save Changes
+      </ion-button>
+    </div>
+  </form>
+</ion-content>
+
+<ion-spinner *ngIf="isLoading" class="spinner-center"></ion-spinner>
+
+<ion-item *ngIf="errorMessage" class="error-message">
+  <ion-icon name="alert-circle-outline" slot="start"></ion-icon>
+  <ion-label>{{ errorMessage }}</ion-label>
+  <ion-button slot="end" fill="clear" (click)="dismissError()">
+    <ion-icon name="close-outline"></ion-icon>
+  </ion-button>
+</ion-item>

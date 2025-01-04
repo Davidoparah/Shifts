@@ -1,0 +1,44 @@
+# Frontend Development Rules (Ionic/Angular App)
+
+# Core Files
+*.component.ts                  # Angular/Ionic components
+*.page.ts                      # Ionic pages
+*.module.ts                    # Angular modules
+*.service.ts                   # Angular services
+*.guard.ts                     # Angular route guards
+*.pipe.ts                      # Angular pipes
+*.directive.ts                # Angular directives
+*.resolver.ts                 # Angular resolvers
+*.interceptor.ts             # HTTP interceptors
+*.model.ts                   # TypeScript interfaces/models
+*.enum.ts                    # TypeScript enums
+
+# Styling
+*.theme.scss                 # Theme variables and styling
+*.page.scss                  # Page-specific styles
+*.component.scss            # Component-specific styles
+
+# Configuration
+*.config.ts                  # Configuration files
+angular.json                # Angular configuration
+tsconfig.json              # TypeScript configuration
+ionic.config.json         # Ionic configuration
+capacitor.config.ts      # Capacitor configuration
+
+# Testing
+*.spec.ts                  # Angular/Ionic tests
+*.test.ts                 # TypeScript tests
+*.fixture.ts             # Test fixtures
+*.mock.ts               # Test mocks
+karma.conf.js          # Karma test configuration
+protractor.conf.js    # E2E test configuration
+
+# Assets & Resources
+src/theme/            # Ionic theming
+src/assets/          # Static assets
+resources/          # App resources (icons, splash)
+
+# Build Output
+dist/               # Compiled output
+www/               # Ionic build output
+node_modules/      # Node.js dependencies

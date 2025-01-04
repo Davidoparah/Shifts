@@ -1,0 +1,48 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/worker"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Edit Skills</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <ion-list>
+    <ion-item>
+      <ion-label position="stacked">Add New Skill</ion-label>
+      <ion-input type="text" [(ngModel)]="newSkill" (keyup.enter)="addSkill()"></ion-input>
+    </ion-item>
+
+    <ion-item-divider>
+      <ion-label>Current Skills</ion-label>
+    </ion-item-divider>
+
+    <ion-item *ngFor="let skill of skills">
+      <ion-label>{{ skill }}</ion-label>
+      <ion-button slot="end" fill="clear" color="danger" (click)="removeSkill(skill)">
+        <ion-icon name="trash-outline"></ion-icon>
+      </ion-button>
+    </ion-item>
+
+    <ion-item *ngIf="skills.length === 0">
+      <ion-label color="medium">No skills added yet</ion-label>
+    </ion-item>
+  </ion-list>
+
+  <div class="ion-padding">
+    <ion-button expand="block" (click)="saveChanges()" [disabled]="isLoading">
+      Save Changes
+    </ion-button>
+  </div>
+</ion-content>
+
+<ion-spinner *ngIf="isLoading" class="spinner-center"></ion-spinner>
+
+<ion-item *ngIf="errorMessage" class="error-message">
+  <ion-icon name="alert-circle-outline" slot="start"></ion-icon>
+  <ion-label>{{ errorMessage }}</ion-label>
+  <ion-button slot="end" fill="clear" (click)="dismissError()">
+    <ion-icon name="close-outline"></ion-icon>
+  </ion-button>
+</ion-item>

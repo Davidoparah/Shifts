@@ -1,0 +1,76 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Register</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
+    <ion-list>
+      <ion-item>
+        <ion-label position="stacked">Name</ion-label>
+        <ion-input type="text" formControlName="name"></ion-input>
+      </ion-item>
+      <div class="validation-error" *ngIf="registerForm.get('name')?.touched && registerForm.get('name')?.invalid">
+        <ion-text color="danger" *ngIf="registerForm.get('name')?.errors?.['required']">
+          Name is required
+        </ion-text>
+      </div>
+
+      <ion-item>
+        <ion-label position="stacked">Email</ion-label>
+        <ion-input type="email" formControlName="email"></ion-input>
+      </ion-item>
+      <div class="validation-error" *ngIf="registerForm.get('email')?.touched && registerForm.get('email')?.invalid">
+        <ion-text color="danger" *ngIf="registerForm.get('email')?.errors?.['required']">
+          Email is required
+        </ion-text>
+        <ion-text color="danger" *ngIf="registerForm.get('email')?.errors?.['email']">
+          Please enter a valid email
+        </ion-text>
+      </div>
+
+      <ion-item>
+        <ion-label position="stacked">Password</ion-label>
+        <ion-input type="password" formControlName="password"></ion-input>
+      </ion-item>
+      <div class="validation-error"
+        *ngIf="registerForm.get('password')?.touched && registerForm.get('password')?.invalid">
+        <ion-text color="danger" *ngIf="registerForm.get('password')?.errors?.['required']">
+          Password is required
+        </ion-text>
+        <ion-text color="danger" *ngIf="registerForm.get('password')?.errors?.['minlength']">
+          Password must be at least 6 characters
+        </ion-text>
+      </div>
+
+      <ion-item>
+        <ion-label position="stacked">User Type</ion-label>
+        <ion-select formControlName="userType">
+          <ion-select-option value="worker">Worker</ion-select-option>
+          <ion-select-option value="business_owner">Business Owner</ion-select-option>
+        </ion-select>
+      </ion-item>
+
+      <ion-item *ngIf="registerForm.get('userType')?.value === 'business_owner'">
+        <ion-label position="stacked">Business Name</ion-label>
+        <ion-input type="text" formControlName="businessName"></ion-input>
+      </ion-item>
+      <div class="validation-error" *ngIf="showBusinessNameError">
+        <ion-text color="danger">
+          Business name is required for business owners
+        </ion-text>
+      </div>
+    </ion-list>
+
+    <div class="ion-padding">
+      <ion-button expand="block" type="submit" [disabled]="registerForm.invalid || isLoading">
+        {{ isLoading ? 'Creating account...' : 'Register' }}
+      </ion-button>
+
+      <ion-button expand="block" fill="clear" routerLink="/auth/login">
+        Already have an account? Login
+      </ion-button>
+    </div>
+  </form>
+</ion-content>

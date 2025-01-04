@@ -1,0 +1,47 @@
+ion-list {
+  margin-bottom: 16px;
+
+  ion-item {
+    --padding-start: 0;
+    --padding-end: 0;
+    --inner-padding-end: 0;
+    margin-bottom: 16px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    ion-label {
+      margin-bottom: 8px;
+    }
+
+    ion-input, ion-textarea {
+      --padding-start: 16px;
+      --padding-end: 16px;
+      --background: var(--ion-color-light);
+      border-radius: 8px;
+    }
+  }
+}
+
+.spinner-center {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.error-message {
+  --background: var(--ion-color-danger-tint);
+  margin: 16px;
+  border-radius: 8px;
+
+  ion-icon {
+    color: var(--ion-color-danger);
+    margin-right: 8px;
+  }
+}
+
+ion-button[type="submit"] {
+  margin-top: 24px;
+} 

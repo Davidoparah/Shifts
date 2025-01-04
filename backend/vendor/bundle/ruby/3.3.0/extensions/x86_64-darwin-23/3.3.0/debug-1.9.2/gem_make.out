@@ -1,0 +1,19 @@
+current directory: /Users/mujimoyen/Documents/Codehance/MobileApp/backend/vendor/bundle/ruby/3.3.0/gems/debug-1.9.2/ext/debug
+/usr/local/opt/ruby/bin/ruby extconf.rb
+creating Makefile
+
+current directory: /Users/mujimoyen/Documents/Codehance/MobileApp/backend/vendor/bundle/ruby/3.3.0/gems/debug-1.9.2/ext/debug
+make DESTDIR\= sitearchdir\=./.gem.20241202-25941-3t7l3b sitelibdir\=./.gem.20241202-25941-3t7l3b clean
+
+current directory: /Users/mujimoyen/Documents/Codehance/MobileApp/backend/vendor/bundle/ruby/3.3.0/gems/debug-1.9.2/ext/debug
+make DESTDIR\= sitearchdir\=./.gem.20241202-25941-3t7l3b sitelibdir\=./.gem.20241202-25941-3t7l3b
+compiling debug.c
+compiling iseq_collector.c
+linking shared-object debug/debug.bundle
+
+current directory: /Users/mujimoyen/Documents/Codehance/MobileApp/backend/vendor/bundle/ruby/3.3.0/gems/debug-1.9.2/ext/debug
+make DESTDIR\= sitearchdir\=./.gem.20241202-25941-3t7l3b sitelibdir\=./.gem.20241202-25941-3t7l3b install
+/usr/bin/install -c -m 0755 debug.bundle ./.gem.20241202-25941-3t7l3b/debug
+
+current directory: /Users/mujimoyen/Documents/Codehance/MobileApp/backend/vendor/bundle/ruby/3.3.0/gems/debug-1.9.2/ext/debug
+make DESTDIR\= sitearchdir\=./.gem.20241202-25941-3t7l3b sitelibdir\=./.gem.20241202-25941-3t7l3b clean
