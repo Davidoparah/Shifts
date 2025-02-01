@@ -5,6 +5,18 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { WorkerService, WorkerProfile } from '../../../services/worker.service';
 
+interface TimeSlot {
+  start_time: string;
+  end_time: string;
+  enabled: boolean;
+}
+
+interface DaySchedule {
+  enabled: boolean;
+  start_time: string;
+  end_time: string;
+}
+
 @Component({
   selector: 'app-edit-availability',
   template: `
@@ -19,73 +31,88 @@ import { WorkerService, WorkerProfile } from '../../../services/worker.service';
 
     <ion-content class="ion-padding">
       <ion-list>
-        <ion-item *ngFor="let day of days">
-          <ion-label>{{ day }}</ion-label>
-          <ion-button slot="end" (click)="addSlot(day)">Add Time Slot</ion-button>
-        </ion-item>
+        <ion-item-group *ngFor="let day of days">
+          <ion-item-divider>
+            <ion-label>{{ day | titlecase }}</ion-label>
+            <ion-toggle [(ngModel)]="schedule[day].enabled" slot="end"></ion-toggle>
+          </ion-item-divider>
 
-        <ion-item *ngFor="let slot of schedule[selectedDay]?.slots; let i = index">
-          <ion-label>
-            <ion-datetime
-              presentation="time"
-              [(ngModel)]="slot.start"
-              (ionChange)="updateSlot(selectedDay, i, 'start', $event)"
-            ></ion-datetime>
-            to
-            <ion-datetime
-              presentation="time"
-              [(ngModel)]="slot.end"
-              (ionChange)="updateSlot(selectedDay, i, 'end', $event)"
-            ></ion-datetime>
-          </ion-label>
-          <ion-button slot="end" color="danger" (click)="removeSlot(selectedDay, i)">
-            <ion-icon name="trash-outline"></ion-icon>
-          </ion-button>
-        </ion-item>
+          <ion-item *ngIf="schedule[day].enabled">
+            <ion-label>Start Time</ion-label>
+            <ion-datetime-button datetime="start-{{day}}"></ion-datetime-button>
+            <ion-modal [keepContentsMounted]="true">
+              <ng-template>
+                <ion-datetime
+                  id="start-{{day}}"
+                  presentation="time"
+                  [(ngModel)]="schedule[day].start_time"
+                  minuteValues="0,15,30,45"
+                ></ion-datetime>
+              </ng-template>
+            </ion-modal>
+          </ion-item>
+
+          <ion-item *ngIf="schedule[day].enabled">
+            <ion-label>End Time</ion-label>
+            <ion-datetime-button datetime="end-{{day}}"></ion-datetime-button>
+            <ion-modal [keepContentsMounted]="true">
+              <ng-template>
+                <ion-datetime
+                  id="end-{{day}}"
+                  presentation="time"
+                  [(ngModel)]="schedule[day].end_time"
+                  minuteValues="0,15,30,45"
+                ></ion-datetime>
+              </ng-template>
+            </ion-modal>
+          </ion-item>
+        </ion-item-group>
       </ion-list>
 
-      <ion-button expand="block" (click)="saveAvailability()">
-        Save Availability
-      </ion-button>
+      <div class="ion-padding">
+        <ion-button expand="block" (click)="saveAvailability()">
+          Save Availability
+        </ion-button>
+      </div>
     </ion-content>
   `,
   styles: [`
-    ion-item {
-      margin-bottom: 8px;
+    ion-item-divider {
+      --background: var(--ion-color-light);
+      --color: var(--ion-color-dark);
+      text-transform: capitalize;
+      margin-top: 16px;
     }
   `],
   standalone: true,
   imports: [IonicModule, CommonModule, FormsModule]
 })
 export class EditAvailabilityPage implements OnInit {
-  days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-  selectedDay = 'Monday';
-  schedule: { [key: string]: { slots: Array<{ start: string; end: string }> } } = {};
+  days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  schedule: { [key: string]: DaySchedule } = {};
 
   constructor(
     private workerService: WorkerService,
     private router: Router,
     private toastCtrl: ToastController
   ) {
-    // Initialize schedule for each day
+    // Initialize schedule with default values
     this.days.forEach(day => {
-      this.schedule[day] = { slots: [] };
+      this.schedule[day] = {
+        enabled: false,
+        start_time: '09:00',
+        end_time: '17:00'
+      };
     });
   }
 
   async ngOnInit() {
     try {
       const profile = await this.workerService.getProfile().toPromise();
-      if (profile) {
-        // Initialize schedule with existing time slots
-        if (profile.time_slots) {
-          Object.keys(profile.time_slots).forEach(day => {
-            this.schedule[day].slots = profile.time_slots![day].map(slot => ({
-              start: slot.start,
-              end: slot.end
-            }));
-          });
-        }
+      if (profile && profile.availability) {
+        Object.keys(profile.availability).forEach(day => {
+          this.schedule[day] = profile.availability[day];
+        });
       }
     } catch (error) {
       console.error('Error loading availability:', error);
@@ -98,31 +125,9 @@ export class EditAvailabilityPage implements OnInit {
     }
   }
 
-  addSlot(day: string) {
-    this.schedule[day].slots.push({
-      start: '09:00',
-      end: '17:00'
-    });
-  }
-
-  removeSlot(day: string, index: number) {
-    this.schedule[day].slots.splice(index, 1);
-  }
-
-  updateSlot(day: string, index: number, field: 'start' | 'end', event: any) {
-    this.schedule[day].slots[index][field] = event.detail.value;
-  }
-
   async saveAvailability() {
     try {
-      const availability = Object.keys(this.schedule).reduce((acc, day) => {
-        if (this.schedule[day].slots.length > 0) {
-          acc[day] = this.schedule[day].slots;
-        }
-        return acc;
-      }, {} as { [key: string]: Array<{ start: string; end: string }> });
-
-      await this.workerService.updateAvailability(availability).toPromise();
+      await this.workerService.updateAvailability(this.schedule).toPromise();
       
       const toast = await this.toastCtrl.create({
         message: 'Availability updated successfully',

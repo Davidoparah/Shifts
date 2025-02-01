@@ -75,7 +75,7 @@ export class ShiftsPage implements OnInit {
   }
 
   loadShifts() {
-    this.http.get<Shift[]>(`${environment.apiUrl}/api/platform/shifts`)
+    this.http.get<Shift[]>(`${environment.apiUrl}/platform/shifts`)
       .subscribe({
         next: (shifts) => {
           this.shifts = shifts;

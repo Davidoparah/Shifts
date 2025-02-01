@@ -1,0 +1,86 @@
+# DevOps Professional Rules
+
+# Frontend Development
+*.component.ts                  # Ionic/Angular components
+*.service.ts                   # Frontend services
+*.module.ts                    # Angular modules
+*.page.ts                      # Ionic pages
+*.guard.ts                     # Route guards
+*.interceptor.ts              # HTTP interceptors
+*.resolver.ts                 # Data resolvers
+*.state.ts                   # State management
+*.store.ts                  # Store configurations
+*.effect.ts                # Side effects
+
+# UI/UX Design
+*.sketch                     # Sketch design files
+*.fig                      # Figma design files
+*.xd                      # Adobe XD files
+*.style.scss             # SCSS style guidelines
+*.theme.scss            # Theme configurations
+*.prototype.html       # Interactive prototypes
+*.wireframe.png       # Wireframe images
+*.mockup.png         # UI mockups
+*.storyboard.png    # User flow storyboards
+*.palette.scss     # Color palettes
+
+# Backend Development
+*.rb                        # Ruby files
+*.rake                     # Rake tasks
+Gemfile                   # Ruby dependencies
+config.ru                # Rack configuration
+*.controller.rb         # Ruby controllers
+*.model.rb             # Ruby models
+*.service.rb          # Ruby services
+*.worker.rb          # Background workers
+*.job.rb            # Job processors
+*.middleware.rb    # Custom middleware
+
+# Database
+*.schema.rb               # Database schemas
+*.migration.rb           # Database migrations
+*.seed.rb               # Seed data
+*.index.js             # MongoDB indexes
+*.aggregation.js      # MongoDB aggregations
+*.query.js           # Database queries
+
+# DevOps & Infrastructure
+Dockerfile                # Container definitions
+docker-compose.yml       # Container orchestration
+*.yml                   # CI/CD pipelines
+*.json                 # Configuration files
+*.conf                # Server configurations
+*.sh                 # Shell scripts
+*.env               # Environment variables
+*.config.js        # Build configurations
+
+# Testing & Quality
+*.spec.ts                # Frontend tests
+*.test.rb               # Backend tests
+*.fixture.ts           # Test fixtures
+*.mock.ts             # Test mocks
+*.factory.rb         # Test factories
+
+# Version Control
+.gitignore              # Git ignore rules
+.gitlab-ci.yml         # GitLab CI/CD
+.github/              # GitHub configurations
+*.md                 # Documentation
+
+# Monitoring & Logging
+*.log                   # Log files
+*.metric.ts           # Custom metrics
+*.trace.rb           # Tracing configurations
+*.monitor.js        # Monitoring scripts
+
+# Security
+*.policy.rb             # Security policies
+*.auth.ts              # Authentication
+*.cert                # Certificates
+*.key                # Security keys
+
+# Tools & Utilities
+package.json            # NPM configuration
+tsconfig.json          # TypeScript config
+ionic.config.json     # Ionic config
+capacitor.config.ts  # Capacitor config

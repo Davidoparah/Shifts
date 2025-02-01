@@ -108,7 +108,7 @@ export class WorkersPage implements OnInit {
   }
 
   loadWorkers() {
-    this.http.get<Worker[]>(`${environment.apiUrl}/api/platform/workers`)
+    this.http.get<Worker[]>(`${environment.apiUrl}/platform/workers`)
       .subscribe({
         next: (workers) => {
           this.workers = workers;

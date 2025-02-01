@@ -5,41 +5,60 @@
 </ion-header>
 
 <ion-content class="ion-padding">
-  <form [formGroup]="loginForm" (ngSubmit)="login()">
-    <ion-list>
-      <ion-item>
-        <ion-label position="stacked">Email</ion-label>
-        <ion-input type="email" formControlName="email"></ion-input>
-      </ion-item>
+  <div class="auth-container">
+    <form [formGroup]="loginForm" (ngSubmit)="login()">
+      <ion-list>
+        <ion-item>
+          <ion-label position="floating">Email</ion-label>
+          <ion-input type="email" formControlName="email" [disabled]="isLoading"></ion-input>
+          <ion-note slot="error"
+            *ngIf="loginForm.get('email')?.touched && loginForm.get('email')?.errors?.['required']">
+            Email is required
+          </ion-note>
+          <ion-note slot="error" *ngIf="loginForm.get('email')?.touched && loginForm.get('email')?.errors?.['email']">
+            Please enter a valid email address
+          </ion-note>
+        </ion-item>
 
-      <ion-item>
-        <ion-label position="stacked">Password</ion-label>
-        <ion-input type="password" formControlName="password"></ion-input>
-      </ion-item>
-    </ion-list>
+        <ion-item>
+          <ion-label position="floating">Password</ion-label>
+          <ion-input type="password" formControlName="password" [disabled]="isLoading"></ion-input>
+          <ion-note slot="error"
+            *ngIf="loginForm.get('password')?.touched && loginForm.get('password')?.errors?.['required']">
+            Password is required
+          </ion-note>
+          <ion-note slot="error"
+            *ngIf="loginForm.get('password')?.touched && loginForm.get('password')?.errors?.['minlength']">
+            Password must be at least 6 characters
+          </ion-note>
+        </ion-item>
+      </ion-list>
 
-    <div class="ion-padding">
-      <ion-button expand="block" type="submit" [disabled]="!loginForm.valid || isLoading">
-        Login
-      </ion-button>
+      <div class="ion-padding">
+        <ion-button expand="block" type="submit" [disabled]="!loginForm.valid || isLoading">
+          <ion-spinner name="dots" *ngIf="isLoading"></ion-spinner>
+          <span *ngIf="!isLoading">Login</span>
+        </ion-button>
 
-      <ion-button expand="block" fill="clear" (click)="goToRegister()">
-        Create Account
-      </ion-button>
+        <ion-button expand="block" fill="clear" (click)="goToRegister()" [disabled]="isLoading">
+          Create Account
+        </ion-button>
 
-      <ion-button expand="block" fill="clear" (click)="goToForgotPassword()">
-        Forgot Password?
-      </ion-button>
-    </div>
-  </form>
+        <ion-button expand="block" fill="clear" (click)="goToForgotPassword()" [disabled]="isLoading">
+          Forgot Password?
+        </ion-button>
+      </div>
+    </form>
+  </div>
 </ion-content>
 
-<ion-spinner *ngIf="isLoading" class="spinner-center"></ion-spinner>
-
-<ion-item *ngIf="errorMessage" class="error-message">
-  <ion-icon name="alert-circle-outline" slot="start"></ion-icon>
-  <ion-label>{{ errorMessage }}</ion-label>
-  <ion-button slot="end" fill="clear" (click)="dismissError()">
-    <ion-icon name="close-outline"></ion-icon>
-  </ion-button>
-</ion-item>
+<ion-footer *ngIf="errorMessage" class="ion-no-border">
+  <ion-toolbar color="danger">
+    <ion-title size="small">{{ errorMessage }}</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="dismissError()">
+        <ion-icon name="close"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-footer>

@@ -2,7 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { IonicModule, AlertController, ToastController } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ShiftService, Shift, Location } from '../../../services/shift.service';
+import { ShiftService } from '../../../services/shift.service';
+import { Shift, Location } from '../../../models/shift.model';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
@@ -178,8 +179,8 @@ export class SchedulePage implements OnInit {
   }
 
   categorizeShifts(shifts: Shift[]) {
-    this.appliedShifts = shifts.filter(shift => shift.status === 'pending');
-    this.upcomingShifts = shifts.filter(shift => shift.status === 'confirmed');
+    this.appliedShifts = shifts.filter(shift => shift.status === 'available');
+    this.upcomingShifts = shifts.filter(shift => shift.status === 'assigned');
   }
 
   async handleRefresh(event: any) {

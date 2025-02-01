@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@capacitor/ios": "^6.2.0",
     "@ionic/storage-angular": "^4.0.0"
   }
 }

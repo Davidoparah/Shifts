@@ -338,7 +338,7 @@ export class DashboardPage implements OnInit, OnDestroy {
   loadStats() {
     this.isLoading = true;
     const headers = this.getHeaders();
-    this.http.get<DashboardStats>(`${environment.apiUrl}/api/platform/dashboard/stats`, { headers })
+    this.http.get<DashboardStats>(`${environment.apiUrl}/platform/dashboard/stats`, { headers })
       .subscribe({
         next: (stats) => {
           this.stats = stats;

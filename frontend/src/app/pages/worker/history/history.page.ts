@@ -1,7 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { IonicModule, ToastController } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
-import { ShiftService, Shift, Location } from '../../../services/shift.service';
+import { ShiftService } from '../../../services/shift.service';
+import { Shift, Location } from '../../../models/shift.model';
 import { firstValueFrom } from 'rxjs';
 
 @Component({

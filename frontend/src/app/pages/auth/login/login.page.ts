@@ -1,9 +1,11 @@
 import { Component } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { IonicModule } from '@ionic/angular';
+import { IonicModule, ToastController } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
-import { AuthService, AuthResponse } from '../../../services/auth.service';
+import { AuthService } from '../../../services/auth.service';
+import { AuthResponse } from '../../../models/user.model';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-login',
@@ -25,7 +27,8 @@ export class LoginPage {
   constructor(
     private formBuilder: FormBuilder,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private toastCtrl: ToastController
   ) {
     this.loginForm = this.formBuilder.group({
       email: ['', [Validators.required, Validators.email]],
@@ -34,23 +37,70 @@ export class LoginPage {
   }
 
   async login() {
-    if (this.loginForm.invalid) return;
+    if (this.loginForm.invalid) {
+      const toast = await this.toastCtrl.create({
+        message: 'Please fill in all required fields correctly',
+        duration: 3000,
+        color: 'warning',
+        position: 'bottom'
+      });
+      await toast.present();
+      return;
+    }
 
     try {
       this.isLoading = true;
+      this.errorMessage = '';
+      
       const { email, password } = this.loginForm.value;
-      const response = await this.authService.login(email, password).toPromise() as AuthResponse;
+      console.log('Attempting login with:', { email });
+      
+      const response = await firstValueFrom(this.authService.login(email, password));
+      console.log('Login response:', response);
 
-      if (response.user.role === 'worker') {
-        await this.router.navigate(['/worker']);
-      } else if (response.user.role === 'business_owner') {
-        await this.router.navigate(['/business-owner']);
-      } else if (response.user.role === 'admin') {
-        await this.router.navigate(['/admin']);
+      if (response && response.user && response.user.role) {
+        // Navigate based on role
+        const role = response.user.role.toLowerCase();
+        console.log('User role:', role);
+        
+        switch (role) {
+          case 'business_owner':
+            await this.router.navigate(['/business-owner/shifts']);
+            break;
+          case 'worker':
+            await this.router.navigate(['/worker/available-shifts']);
+            break;
+          case 'admin':
+            await this.router.navigate(['/admin/dashboard']);
+            break;
+          default:
+            console.error('Unknown user role:', role);
+            const toast = await this.toastCtrl.create({
+              message: 'Invalid user role',
+              duration: 2000,
+              color: 'danger'
+            });
+            await toast.present();
+        }
+      } else {
+        console.error('Invalid response format:', response);
+        const toast = await this.toastCtrl.create({
+          message: 'Invalid response from server',
+          duration: 2000,
+          color: 'danger'
+        });
+        await toast.present();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
-      this.errorMessage = 'Invalid email or password';
+      const errorMessage = error.error?.error || error.message || 'Login failed';
+      const toast = await this.toastCtrl.create({
+        message: errorMessage,
+        duration: 3000,
+        color: 'danger',
+        position: 'bottom'
+      });
+      await toast.present();
     } finally {
       this.isLoading = false;
     }

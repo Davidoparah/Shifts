@@ -2,10 +2,12 @@ import { Component, OnInit } from '@angular/core';
 import { IonicModule, AlertController, ToastController } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { ShiftService, Shift } from '../../../services/shift.service';
+import { ShiftService } from '../../../services/shift.service';
+import { Shift } from '../../../models/shift.model';
 import { ShiftsListComponent } from './shifts-list.component';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../../services/auth.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-shifts',
@@ -58,7 +60,8 @@ export class ShiftsPage implements OnInit {
     private shiftService: ShiftService,
     private authService: AuthService,
     private alertCtrl: AlertController,
-    private toastCtrl: ToastController
+    private toastCtrl: ToastController,
+    private router: Router
   ) {}
 
   ngOnInit() {
@@ -80,8 +83,7 @@ export class ShiftsPage implements OnInit {
       this.isLoading = true;
 
       // Validate auth status first
-      const user = await firstValueFrom(this.authService.validateToken());
-      if (!user) {
+      if (!this.authService.isAuthenticated()) {
         throw new Error('Authentication required');
       }
 
@@ -93,7 +95,7 @@ export class ShiftsPage implements OnInit {
       let message = 'Failed to load shifts';
       if (error.message === 'Authentication required') {
         message = 'Please log in to view shifts';
-        this.authService.logout().subscribe();
+        this.authService.logout();
       }
 
       const toast = await this.toastCtrl.create({
@@ -131,8 +133,7 @@ export class ShiftsPage implements OnInit {
 
   async editShift(shift: Shift) {
     // Navigate to edit page
-    // TODO: Implement edit functionality
-    console.log('Edit shift:', shift);
+    this.router.navigate(['/business/shifts/edit', shift.id]);
   }
 
   async confirmDelete(shift: Shift) {

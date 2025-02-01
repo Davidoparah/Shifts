@@ -1,23 +1,21 @@
-class ApplicationController < ActionController::Base
-  protect_from_forgery with: :null_session
+class ApplicationController < ActionController::API
+  include ActionController::MimeResponds
+  include JwtAuthentication
   
+  before_action :authenticate_request
+  attr_reader :current_user
+
   private
 
   def authenticate_user!
-    header = request.headers['Authorization']
-    header = header.split(' ').last if header
-    
-    begin
-      decoded = JsonWebToken.decode(header)
-      @current_user = User.find(decoded[:user_id]) if decoded
-    rescue Mongoid::Errors::DocumentNotFound => e
-      render json: { errors: 'User not found' }, status: :unauthorized
-    rescue JWT::DecodeError => e
-      render json: { errors: 'Invalid token' }, status: :unauthorized
+    unless current_user
+      render json: { error: 'Authentication required' }, status: :unauthorized
     end
   end
 
-  def current_user
-    @current_user
+  def require_authentication!
+    unless @current_user
+      render json: { error: 'Authentication required' }, status: :unauthorized
+    end
   end
 end

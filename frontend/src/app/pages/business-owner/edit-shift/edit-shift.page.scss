@@ -1,0 +1,32 @@
+ion-item {
+  margin-bottom: 16px;
+  --background: var(--ion-color-light);
+  --border-radius: 8px;
+  --padding-start: 16px;
+  --padding-end: 16px;
+}
+
+ion-input, ion-textarea {
+  --padding-start: 8px;
+  --padding-end: 8px;
+  --background: var(--ion-color-light-shade);
+  --border-radius: 4px;
+}
+
+ion-datetime {
+  --background: var(--ion-color-light);
+}
+
+.spinner-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+ion-button {
+  margin-top: 24px;
+  --border-radius: 8px;
+  height: 48px;
+  font-weight: 600;
+} 

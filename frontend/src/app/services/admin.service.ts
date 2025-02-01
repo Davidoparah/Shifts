@@ -27,7 +27,7 @@ export interface Analytics {
   providedIn: 'root'
 })
 export class AdminService {
-  private apiUrl = `${environment.apiUrl}/api/admin`;
+  private apiUrl = `${environment.apiUrl}/admin`;
 
   constructor(private http: HttpClient) {}
 

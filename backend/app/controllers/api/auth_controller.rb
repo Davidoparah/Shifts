@@ -1,45 +1,65 @@
 module Api
   class AuthController < ApplicationController
-    skip_before_action :verify_authenticity_token
-    before_action :authenticate_user!, except: [:login, :register, :forgot_password, :reset_password]
+    skip_before_action :authenticate_request, only: [:login, :register, :refresh_token, :forgot_password, :reset_password]
 
     def login
-      # Log the incoming parameters
-      Rails.logger.info "Login params: #{params.inspect}"
-      
       credentials = params[:auth] || params
-      Rails.logger.info "Processed credentials: #{credentials.inspect}"
-      
       user = User.where(email: credentials[:email].downcase).first
-      Rails.logger.info "Found user: #{user.inspect}"
-      
       if user&.authenticate(credentials[:password])
         if user.active?
-          Rails.logger.info "Password authentication successful"
-          token = JsonWebToken.encode(user_id: user.id.to_s)
-          Rails.logger.info "Generated token: #{token}"
-          
-          # Record login timestamp
+          token = jwt_encode(user_id: user.id.to_s)
+          refresh_token = generate_refresh_token(user.id.to_s)
           user.record_login
           
-          response_data = { 
-            token: token, 
+          render json: { 
+            token: token,
+            refresh_token: refresh_token,
             user: user.as_json(except: :password_digest)
           }
-          Rails.logger.info "Response data: #{response_data}"
-          
-          render json: response_data
         else
-          Rails.logger.error "Account not active for email: #{credentials[:email]}"
-          render json: { error: 'Account is not active' }, status: :unauthorized
+          render json: { 
+            error: 'Account is not active',
+            code: 'account_inactive'
+          }, status: :unauthorized
         end
       else
-        Rails.logger.error "Authentication failed for email: #{credentials[:email]}"
-        render json: { error: 'Invalid email or password' }, status: :unauthorized
+        render json: { 
+          error: 'Invalid email or password',
+          code: 'invalid_credentials'
+        }, status: :unauthorized
       end
     rescue => e
-      Rails.logger.error "Login error: #{e.message}\n#{e.backtrace.join("\n")}"
-      render json: { error: 'An error occurred during login' }, status: :internal_server_error
+      JWT.log(:error, "Login error", { error: e.message })
+      render json: { 
+        error: 'An error occurred during login',
+        code: 'login_error'
+      }, status: :internal_server_error
+    end
+
+    def refresh_token
+      begin
+        result = refresh_access_token(params[:refresh_token])
+        render json: {
+          token: result[:token],
+          user: result[:user].as_json(except: :password_digest)
+        }
+      rescue RefreshTokenError => e
+        render json: { 
+          error: e.message,
+          code: 'invalid_refresh_token'
+        }, status: :unauthorized
+      rescue => e
+        JWT.log(:error, "Token refresh error", { error: e.message })
+        render json: { 
+          error: 'Failed to refresh token',
+          code: 'refresh_error'
+        }, status: :internal_server_error
+      end
+    end
+
+    def logout
+      # In a real app, you might want to blacklist the token here
+      head :no_content
     end
 
     def register
@@ -177,10 +197,6 @@ module Api
 
     def me
       render json: { user: current_user.as_json(except: :password_digest) }
-    end
-
-    def logout
-      head :no_content
     end
 
     private

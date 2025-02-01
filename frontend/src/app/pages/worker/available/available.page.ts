@@ -1,7 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { IonicModule, AlertController, ToastController, InfiniteScrollCustomEvent } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
-import { ShiftService, Shift, Location } from '../../../services/shift.service';
+import { ShiftService } from '../../../services/shift.service';
+import { Shift, Location } from '../../../models/shift.model';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
@@ -25,7 +26,8 @@ import { firstValueFrom } from 'rxjs';
         <ion-item-sliding *ngFor="let shift of availableShifts">
           <ion-item>
             <ion-label>
-              <h2>{{shift.business.name || 'Unknown Business'}}</h2>
+              <h2>{{ shift.title }}</h2>
+              <h3>{{ shift.business?.name || 'Unknown Business' }}</h3>
               <p>
                 <ion-icon name="location-outline"></ion-icon>
                 {{isLocationObject(shift.location) ? shift.location.formatted_address : shift.location}}
@@ -78,8 +80,14 @@ import { firstValueFrom } from 'rxjs';
   styles: [`
     ion-label h2 {
       font-weight: 600;
-      margin-bottom: 8px;
+      margin-bottom: 4px;
       color: var(--ion-color-dark);
+    }
+
+    ion-label h3 {
+      font-size: 0.9em;
+      margin-bottom: 8px;
+      color: var(--ion-color-medium);
     }
 
     ion-label p {
@@ -156,7 +164,7 @@ export class AvailablePage implements OnInit {
     
     try {
       console.log('Loading available shifts...');
-      const shifts = await firstValueFrom(this.shiftService.getAvailableShifts(this.currentPage));
+      const shifts = await firstValueFrom(this.shiftService.getAvailableShifts());
       console.log('Loaded shifts:', shifts);
       this.availableShifts = shifts;
       
@@ -192,20 +200,22 @@ export class AvailablePage implements OnInit {
     });
   }
 
+  async handleRefresh(event: any) {
+    await this.loadShifts(event);
+  }
+
   async loadMore(event: InfiniteScrollCustomEvent) {
-    if (!this.hasMoreData || this.isLoading) {
+    if (!this.hasMoreData) {
       event.target.complete();
       return;
     }
 
-    this.isLoading = true;
     this.currentPage++;
-
     try {
-      const newShifts = await firstValueFrom(this.shiftService.getAvailableShifts(this.currentPage));
-      this.availableShifts = [...this.availableShifts, ...newShifts];
-      
-      if (newShifts.length === 0) {
+      const newShifts = await firstValueFrom(this.shiftService.getAvailableShifts());
+      if (newShifts.length > 0) {
+        this.availableShifts = [...this.availableShifts, ...newShifts];
+      } else {
         this.hasMoreData = false;
       }
     } catch (error) {
@@ -213,18 +223,13 @@ export class AvailablePage implements OnInit {
       this.hasMoreData = false;
     } finally {
       event.target.complete();
-      this.isLoading = false;
     }
-  }
-
-  async handleRefresh(event: any) {
-    await this.loadShifts(event);
   }
 
   async applyForShift(shift: Shift) {
     const alert = await this.alertCtrl.create({
       header: 'Apply for Shift',
-      message: `Are you sure you want to apply for this shift at ${shift.business.name}?`,
+      message: 'Are you sure you want to apply for this shift?',
       buttons: [
         {
           text: 'Cancel',
@@ -235,25 +240,20 @@ export class AvailablePage implements OnInit {
           handler: async () => {
             try {
               await firstValueFrom(this.shiftService.applyForShift(shift.id));
+              await this.loadShifts();
               
               const toast = await this.toastCtrl.create({
-                message: 'Successfully applied for shift!',
+                message: 'Successfully applied for shift',
                 duration: 2000,
-                color: 'success',
-                position: 'bottom'
+                color: 'success'
               });
               await toast.present();
-              
-              // Remove the applied shift from the list
-              this.availableShifts = this.availableShifts.filter(s => s.id !== shift.id);
             } catch (error) {
               console.error('Error applying for shift:', error);
-              
               const toast = await this.toastCtrl.create({
-                message: 'Failed to apply for shift. Please try again.',
+                message: 'Failed to apply for shift',
                 duration: 3000,
-                color: 'danger',
-                position: 'bottom'
+                color: 'danger'
               });
               await toast.present();
             }

@@ -26,20 +26,66 @@ class ShiftApplication
   def approve!
     return false unless pending?
     
-    ShiftApplication.transaction do
-      update!(status: 'approved')
-      shift.assign_worker!(worker)
-      shift.applications.where.not(id: id).update_all(status: 'rejected')
+    begin
+      # Start a session for the transaction
+      Mongoid.client(:default).with_session do |session|
+        session.start_transaction(
+          write_concern: { w: 'majority' },
+          read_concern: { level: :majority }
+        )
+
+        begin
+          # Update application status
+          self.with_session(session).update!(status: 'approved')
+          
+          # Assign worker to shift
+          shift.with_session(session).assign_worker!(worker)
+          
+          # Reject other applications
+          shift.applications
+              .where(:id.ne => id)
+              .with_session(session)
+              .update_all(status: 'rejected')
+
+          session.commit_transaction
+          true
+        rescue StandardError => e
+          session.abort_transaction
+          Rails.logger.error("Transaction error in approve!: #{e.message}")
+          Rails.logger.error(e.backtrace.join("\n"))
+          raise e
+        end
+      end
+      true
+    rescue StandardError => e
+      Rails.logger.error("Error in approve!: #{e.message}")
+      Rails.logger.error(e.backtrace.join("\n"))
+      false
     end
-    true
-  rescue StandardError => e
-    Rails.logger.error("Error approving application: #{e.message}")
-    false
   end
 
   def reject!
     return false unless pending?
-    update(status: 'rejected')
+    
+    begin
+      Mongoid.client(:default).with_session do |session|
+        session.start_transaction
+        
+        begin
+          self.with_session(session).update!(status: 'rejected')
+          session.commit_transaction
+          true
+        rescue StandardError => e
+          session.abort_transaction
+          Rails.logger.error("Transaction error in reject!: #{e.message}")
+          raise e
+        end
+      end
+      true
+    rescue StandardError => e
+      Rails.logger.error("Error in reject!: #{e.message}")
+      false
+    end
   end
 
   def pending?

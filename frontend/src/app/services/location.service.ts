@@ -38,7 +38,7 @@ export class LocationService {
   constructor(private http: HttpClient) {}
 
   getNearbyLocations(latitude: number, longitude: number, radius: number = 10): Observable<Location[]> {
-    return this.http.get<Location[]>(`${environment.apiUrl}/api/locations/nearby`, {
+    return this.http.get<Location[]>(`${environment.apiUrl}/locations/nearby`, {
       params: {
         latitude: latitude.toString(),
         longitude: longitude.toString(),
@@ -52,7 +52,7 @@ export class LocationService {
     destination: { latitude: number; longitude: number },
     mode: 'driving' | 'walking' | 'bicycling' | 'transit' = 'driving'
   ): Observable<DirectionsResponse> {
-    return this.http.get<DirectionsResponse>(`${environment.apiUrl}/api/locations/directions`, {
+    return this.http.get<DirectionsResponse>(`${environment.apiUrl}/locations/directions`, {
       params: {
         origin_lat: origin.latitude.toString(),
         origin_lng: origin.longitude.toString(),

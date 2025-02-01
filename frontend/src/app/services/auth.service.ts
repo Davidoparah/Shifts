@@ -1,122 +1,153 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, throwError } from 'rxjs';
-import { map, tap, catchError } from 'rxjs/operators';
+import { catchError, map, tap } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
+import { User, AuthResponse } from '../models/user.model';
 import { Router } from '@angular/router';
-
-export interface AuthResponse {
-  token: string;
-  user: {
-    id: number;
-    email: string;
-    name: string;
-    role: string;
-  };
-}
+import { ToastController } from '@ionic/angular';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private currentUserSubject: BehaviorSubject<any>;
-  public currentUser: Observable<any>;
-  private apiUrl = environment.apiUrl;
+  private currentUserSubject: BehaviorSubject<User | null>;
+  public currentUser: Observable<User | null>;
 
   constructor(
     private http: HttpClient,
-    private router: Router
+    private router: Router,
+    private toastController: ToastController
   ) {
-    this.currentUserSubject = new BehaviorSubject<any>(this.getUserFromStorage());
+    let storedUser = null;
+    try {
+      const storedUserStr = localStorage.getItem('currentUser');
+      storedUser = storedUserStr ? JSON.parse(storedUserStr) : null;
+    } catch (error) {
+      console.error('Error accessing localStorage:', error);
+    }
+    this.currentUserSubject = new BehaviorSubject<User | null>(storedUser);
     this.currentUser = this.currentUserSubject.asObservable();
   }
 
-  public get currentUserValue() {
+  private safeLocalStorageSet(key: string, value: string): void {
+    try {
+      localStorage.setItem(key, value);
+    } catch (error) {
+      console.error(`Error setting ${key} in localStorage:`, error);
+    }
+  }
+
+  private safeLocalStorageRemove(key: string): void {
+    try {
+      localStorage.removeItem(key);
+    } catch (error) {
+      console.error(`Error removing ${key} from localStorage:`, error);
+    }
+  }
+
+  public getCurrentUser(): User | null {
     return this.currentUserSubject.value;
   }
 
   login(email: string, password: string): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.apiUrl}/auth/login`, { email, password })
+    return this.http.post<AuthResponse>(`${environment.apiUrl}/auth/login`, { email, password })
       .pipe(
         tap(response => {
-          if (response && response.token) {
-            this.setUserInStorage(response);
-            this.currentUserSubject.next(response.user);
+          console.log('Login response:', response);
+          if (!response.user || !response.token || !response.refresh_token) {
+            throw new Error('Invalid response format from server');
           }
+          this.setCurrentUser(response.user);
+          this.safeLocalStorageSet('token', response.token);
+          this.safeLocalStorageSet('refresh_token', response.refresh_token);
         }),
         catchError(error => {
           console.error('Login error:', error);
-          return throwError(() => error);
+          if (error.error?.code === 'account_inactive') {
+            return throwError(() => new Error('Your account is not active. Please contact support.'));
+          } else if (error.error?.code === 'invalid_credentials') {
+            return throwError(() => new Error('Invalid email or password.'));
+          } else if (error.status === 0) {
+            return throwError(() => new Error('Network error. Please check your connection.'));
+          }
+          return throwError(() => new Error(error.error?.error || error.message || 'Login failed'));
         })
       );
   }
 
-  register(userData: any): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.apiUrl}/auth/register`, userData)
+  refreshToken(): Observable<AuthResponse> {
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (!refreshToken) {
+      return throwError(() => new Error('No refresh token available'));
+    }
+
+    return this.http.post<AuthResponse>(`${environment.apiUrl}/auth/refresh_token`, { refresh_token: refreshToken })
       .pipe(
         tap(response => {
-          if (response && response.token) {
-            this.setUserInStorage(response);
-            this.currentUserSubject.next(response.user);
+          if (!response.token || !response.refresh_token) {
+            throw new Error('Invalid token refresh response');
+          }
+          localStorage.setItem('token', response.token);
+          localStorage.setItem('refresh_token', response.refresh_token);
+          const currentUser = this.getCurrentUser();
+          if (currentUser) {
+            currentUser.token = response.token;
+            currentUser.refresh_token = response.refresh_token;
+            this.setCurrentUser(currentUser);
           }
         }),
         catchError(error => {
-          console.error('Registration error:', error);
-          return throwError(() => error);
+          console.error('Token refresh failed:', error);
+          this.logout();
+          return throwError(() => new Error('Token refresh failed'));
         })
       );
   }
 
-  logout(): Observable<any> {
-    return this.http.post(`${this.apiUrl}/auth/logout`, {}).pipe(
-      tap(() => {
-        localStorage.removeItem('currentUser');
-        localStorage.removeItem('token');
-        this.currentUserSubject.next(null);
-        this.router.navigate(['/auth/login']);
-      }),
-      catchError(error => {
-        console.error('Logout error:', error);
-        return throwError(() => error);
-      })
-    );
+  logout() {
+    this.safeLocalStorageRemove('currentUser');
+    this.safeLocalStorageRemove('token');
+    this.safeLocalStorageRemove('refresh_token');
+    this.currentUserSubject.next(null);
+    this.router.navigate(['/auth/login']);
+  }
+
+  private setCurrentUser(user: User) {
+    try {
+      localStorage.setItem('currentUser', JSON.stringify(user));
+      this.currentUserSubject.next(user);
+    } catch (error) {
+      console.error('Error setting current user:', error);
+      this.currentUserSubject.next(user);
+    }
   }
 
   forgotPassword(email: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/auth/forgot-password`, { email })
+    return this.http.post(`${environment.apiUrl}/auth/forgot_password`, { email })
       .pipe(
         catchError(error => {
           console.error('Forgot password error:', error);
-          return throwError(() => error);
+          return throwError(() => new Error(error.error?.message || 'Failed to process forgot password request'));
         })
       );
   }
 
-  resetPassword(token: string, password: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/auth/reset-password`, { token, password })
+  register(userData: Partial<User>): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${environment.apiUrl}/auth/register`, userData)
       .pipe(
+        tap(response => {
+          if (!response.user || !response.token || !response.refresh_token) {
+            throw new Error('Invalid registration response');
+          }
+          this.setCurrentUser(response.user);
+          localStorage.setItem('token', response.token);
+          localStorage.setItem('refresh_token', response.refresh_token);
+        }),
         catchError(error => {
-          console.error('Reset password error:', error);
-          return throwError(() => error);
+          console.error('Registration error:', error);
+          return throwError(() => new Error(error.error?.message || 'Registration failed'));
         })
       );
-  }
-
-  private setUserInStorage(response: AuthResponse) {
-    localStorage.setItem('currentUser', JSON.stringify(response.user));
-    localStorage.setItem('token', response.token);
-  }
-
-  private getUserFromStorage() {
-    const user = localStorage.getItem('currentUser');
-    return user ? JSON.parse(user) : null;
-  }
-
-  isAuthenticated(): boolean {
-    return !!this.currentUserValue && !!localStorage.getItem('token');
-  }
-
-  getToken(): string | null {
-    return localStorage.getItem('token');
   }
 } 

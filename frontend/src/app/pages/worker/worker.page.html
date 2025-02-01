@@ -38,10 +38,10 @@
     <ion-card *ngIf="profile">
       <ion-card-header>
         <ion-avatar class="ion-margin-bottom">
-          <img [src]="profile.avatar || 'assets/default-avatar.png'" alt="Profile picture">
+          <img src="assets/default-avatar.png" alt="Profile picture">
         </ion-avatar>
-        <ion-card-title>{{ profile.name }}</ion-card-title>
-        <ion-card-subtitle>{{ profile.email }}</ion-card-subtitle>
+        <ion-card-title>{{ profile.user.first_name }} {{ profile.user.last_name }}</ion-card-title>
+        <ion-card-subtitle>{{ profile.user.email }}</ion-card-subtitle>
       </ion-card-header>
 
       <ion-card-content>
@@ -58,7 +58,7 @@
             <ion-icon name="briefcase-outline" slot="start"></ion-icon>
             <ion-label>
               <h3>Completed Shifts</h3>
-              <p>{{ profile.completedShifts }}</p>
+              <p>{{ profile.total_shifts }}</p>
             </ion-label>
           </ion-item>
 
@@ -122,10 +122,15 @@
       <ion-item *ngFor="let shift of availableShifts">
         <ion-label>
           <h2>{{ shift.title }}</h2>
-          <p>Date: {{ shift.date | date }}</p>
-          <p>Time: {{ shift.startTime }} - {{ shift.endTime }}</p>
+          <h3>{{ shift.business.name }}</h3>
+          <p>Date: {{ shift.start_time | date:'mediumDate' }}</p>
+          <p>Time: {{ shift.start_time | date:'shortTime' }} - {{ shift.end_time | date:'shortTime' }}</p>
           <p>Location: {{ shift.location }}</p>
           <p>Rate: ${{ shift.rate }}/hr</p>
+          <p *ngIf="shift.requirements && shift.requirements.length">Requirements: {{ shift.requirements.join(', ') }}
+          </p>
+          <p *ngIf="shift.dress_code">Dress Code: {{ shift.dress_code }}</p>
+          <p *ngIf="shift.notes">Notes: {{ shift.notes }}</p>
         </ion-label>
         <ion-button slot="end" (click)="applyForShift(shift)">Apply</ion-button>
       </ion-item>
@@ -148,17 +153,18 @@
       <ion-item *ngFor="let shift of upcomingShifts">
         <ion-label>
           <h2>{{ shift.title }}</h2>
-          <p>Date: {{ shift.date | date }}</p>
-          <p>Time: {{ shift.startTime }} - {{ shift.endTime }}</p>
+          <h3>{{ shift.business.name }}</h3>
+          <p>Date: {{ shift.start_time | date:'mediumDate' }}</p>
+          <p>Time: {{ shift.start_time | date:'shortTime' }} - {{ shift.end_time | date:'shortTime' }}</p>
           <p>Location: {{ shift.location }}</p>
           <p>Rate: ${{ shift.rate }}/hr</p>
+          <p *ngIf="shift.requirements && shift.requirements.length">Requirements: {{ shift.requirements.join(', ') }}
+          </p>
+          <p *ngIf="shift.dress_code">Dress Code: {{ shift.dress_code }}</p>
+          <p *ngIf="shift.notes">Notes: {{ shift.notes }}</p>
         </ion-label>
-        <ion-button slot="end" color="danger" (click)="cancelShift(shift)">
-          Cancel
-        </ion-button>
-        <ion-button slot="end" color="success" (click)="startShift(shift)">
-          Start
-        </ion-button>
+        <ion-button slot="end" color="danger" (click)="cancelShift(shift)">Cancel</ion-button>
+        <ion-button slot="end" color="success" (click)="startShift(shift)">Start</ion-button>
       </ion-item>
 
       <ion-item *ngIf="upcomingShifts.length === 0">
@@ -179,11 +185,13 @@
       <ion-item *ngFor="let shift of completedShifts">
         <ion-label>
           <h2>{{ shift.title }}</h2>
-          <p>Date: {{ shift.date | date }}</p>
-          <p>Time: {{ shift.startTime }} - {{ shift.endTime }}</p>
+          <h3>{{ shift.business.name }}</h3>
+          <p>Date: {{ shift.start_time | date:'mediumDate' }}</p>
+          <p>Time: {{ shift.start_time | date:'shortTime' }} - {{ shift.end_time | date:'shortTime' }}</p>
           <p>Location: {{ shift.location }}</p>
           <p>Rate: ${{ shift.rate }}/hr</p>
           <p *ngIf="shift.rating">Rating: {{ shift.rating }}/5</p>
+          <p *ngIf="shift.feedback">Feedback: {{ shift.feedback }}</p>
         </ion-label>
       </ion-item>
 

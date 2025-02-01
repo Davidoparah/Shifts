@@ -1,0 +1,123 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/business-owner/shifts"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Create Shift</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <form (ngSubmit)="createShift()" #shiftForm="ngForm">
+    <div class="card-container">
+      <div class="section-header">
+        <ion-icon name="briefcase-outline"></ion-icon>
+        <h2>Basic Information</h2>
+      </div>
+
+      <ion-item>
+        <ion-label position="stacked">Title</ion-label>
+        <ion-input [(ngModel)]="shift.title" name="title" required type="text" placeholder="Enter shift title">
+        </ion-input>
+      </ion-item>
+
+      <ion-item>
+        <ion-label position="stacked">Available Slots</ion-label>
+        <ion-input [(ngModel)]="shift.slots_available" name="slots_available" required type="number" min="1"
+          placeholder="Enter number of available positions">
+        </ion-input>
+      </ion-item>
+
+      <div class="section-header">
+        <ion-icon name="time-outline"></ion-icon>
+        <h2>Schedule</h2>
+      </div>
+
+      <ion-item>
+        <ion-label position="stacked">Start Time</ion-label>
+        <ion-datetime-button datetime="start"></ion-datetime-button>
+        <ion-modal [keepContentsMounted]="true">
+          <ng-template>
+            <ion-datetime id="start" [(ngModel)]="shift.start_time" name="start_time" required [min]="minDate"
+              presentation="date-time" [showDefaultButtons]="true" (ionChange)="onStartTimeChange()">
+            </ion-datetime>
+          </ng-template>
+        </ion-modal>
+      </ion-item>
+
+      <ion-item>
+        <ion-label position="stacked">End Time</ion-label>
+        <ion-datetime-button datetime="end"></ion-datetime-button>
+        <ion-modal [keepContentsMounted]="true">
+          <ng-template>
+            <ion-datetime id="end" [(ngModel)]="shift.end_time" name="end_time" required [min]="minEndDate"
+              presentation="date-time" [showDefaultButtons]="true" (ionChange)="validateEndTime()">
+            </ion-datetime>
+          </ng-template>
+        </ion-modal>
+      </ion-item>
+
+      <ion-item>
+        <ion-label>
+          <h2>Total Hours: {{ totalHours | number:'1.0-2' }}</h2>
+        </ion-label>
+      </ion-item>
+
+      <div class="section-header">
+        <ion-icon name="location-outline"></ion-icon>
+        <h2>Location & Payment</h2>
+      </div>
+
+      <ion-item>
+        <ion-label position="stacked">Location</ion-label>
+        <ion-input [(ngModel)]="shift.location" name="location" required type="text" placeholder="Enter shift location">
+        </ion-input>
+      </ion-item>
+
+      <ion-item>
+        <ion-label position="stacked">Rate ($/hr)</ion-label>
+        <ion-input [(ngModel)]="shift.rate" name="rate" required type="number" min="0" step="0.01"
+          (ionChange)="calculateTotalEarnings()" placeholder="Enter hourly rate">
+        </ion-input>
+      </ion-item>
+
+      <ion-item>
+        <ion-label>
+          <h2>Total Earnings: {{ totalEarnings | number:'1.2-2' | currency }}</h2>
+        </ion-label>
+      </ion-item>
+
+      <div class="section-header">
+        <ion-icon name="information-circle-outline"></ion-icon>
+        <h2>Additional Details</h2>
+      </div>
+
+      <ion-item>
+        <ion-label position="stacked">Dress Code</ion-label>
+        <ion-input [(ngModel)]="shift.dress_code" name="dress_code" type="text"
+          placeholder="Enter dress code requirements">
+        </ion-input>
+      </ion-item>
+
+      <ion-item>
+        <ion-label position="stacked">Requirements</ion-label>
+        <ion-input [(ngModel)]="requirementsText" name="requirements" type="text"
+          placeholder="Enter requirements, separated by commas">
+        </ion-input>
+      </ion-item>
+
+      <ion-item>
+        <ion-label position="stacked">Notes</ion-label>
+        <ion-textarea [(ngModel)]="shift.notes" name="notes" rows="3" placeholder="Enter any additional notes">
+        </ion-textarea>
+      </ion-item>
+    </div>
+
+    <div class="action-button">
+      <ion-button expand="block" type="submit" [disabled]="!shiftForm.valid || !isEndTimeValid">
+        <ion-icon name="add-circle-outline" slot="start"></ion-icon>
+        Create Shift
+      </ion-button>
+    </div>
+  </form>
+</ion-content>

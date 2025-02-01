@@ -14,57 +14,113 @@ import { WorkerService, WorkerProfile } from '../../../services/worker.service';
           <ion-back-button defaultHref="/worker"></ion-back-button>
         </ion-buttons>
         <ion-title>Edit Profile</ion-title>
+        <ion-buttons slot="end">
+          <ion-button (click)="onSubmit()" [disabled]="!profileForm.valid || isLoading">
+            Save
+          </ion-button>
+        </ion-buttons>
       </ion-toolbar>
     </ion-header>
 
     <ion-content class="ion-padding">
-      <form [formGroup]="profileForm" (ngSubmit)="onSubmit()" *ngIf="!isLoading">
-        <ion-item>
-          <ion-label position="floating">Name</ion-label>
-          <ion-input formControlName="name" type="text"></ion-input>
-        </ion-item>
+      <form [formGroup]="profileForm" *ngIf="!isLoading">
+        <ion-list>
+          <ion-item-group>
+            <ion-item-divider>
+              <ion-label>Personal Information</ion-label>
+            </ion-item-divider>
 
-        <ion-item>
-          <ion-label position="floating">Email</ion-label>
-          <ion-input formControlName="email" type="email"></ion-input>
-        </ion-item>
+            <ion-item>
+              <ion-label position="stacked">Phone Number</ion-label>
+              <ion-input formControlName="phone" type="tel" placeholder="Enter your phone number"></ion-input>
+            </ion-item>
 
-        <ion-item>
-          <ion-label position="floating">Phone</ion-label>
-          <ion-input formControlName="phone" type="tel"></ion-input>
-        </ion-item>
+            <ion-item>
+              <ion-label position="stacked">Address</ion-label>
+              <ion-input formControlName="address" type="text" placeholder="Enter your address"></ion-input>
+            </ion-item>
 
-        <ion-item>
-          <ion-label position="floating">Address</ion-label>
-          <ion-textarea formControlName="address" rows="3"></ion-textarea>
-        </ion-item>
+            <ion-item>
+              <ion-label position="stacked">Bio</ion-label>
+              <ion-textarea 
+                formControlName="bio" 
+                rows="4" 
+                placeholder="Tell us about yourself, your experience, and what makes you a great worker"
+              ></ion-textarea>
+            </ion-item>
+          </ion-item-group>
 
-        <ion-item>
-          <ion-label position="floating">Bio</ion-label>
-          <ion-textarea formControlName="bio" rows="4"></ion-textarea>
-        </ion-item>
+          <ion-item-group>
+            <ion-item-divider>
+              <ion-label>Work Preferences</ion-label>
+            </ion-item-divider>
 
-        <ion-button
-          expand="block"
-          type="submit"
-          class="ion-margin-top"
-          [disabled]="!profileForm.valid"
-        >
-          Update Profile
-        </ion-button>
+            <ion-item>
+              <ion-label position="stacked">Hourly Rate ($)</ion-label>
+              <ion-input 
+                formControlName="hourly_rate" 
+                type="number" 
+                min="0" 
+                placeholder="Enter your desired hourly rate"
+              ></ion-input>
+            </ion-item>
+
+            <ion-item>
+              <ion-label position="stacked">Skills</ion-label>
+              <ion-select formControlName="skills" multiple="true" placeholder="Select your skills">
+                <ion-select-option value="Customer Service">Customer Service</ion-select-option>
+                <ion-select-option value="Food Service">Food Service</ion-select-option>
+                <ion-select-option value="Retail">Retail</ion-select-option>
+                <ion-select-option value="Warehouse">Warehouse</ion-select-option>
+                <ion-select-option value="Cleaning">Cleaning</ion-select-option>
+                <ion-select-option value="Security">Security</ion-select-option>
+                <ion-select-option value="Office Work">Office Work</ion-select-option>
+                <ion-select-option value="Manual Labor">Manual Labor</ion-select-option>
+                <ion-select-option value="Driving">Driving</ion-select-option>
+                <ion-select-option value="Sales">Sales</ion-select-option>
+              </ion-select>
+            </ion-item>
+          </ion-item-group>
+        </ion-list>
       </form>
 
-      <ion-spinner *ngIf="isLoading" class="spinner-center"></ion-spinner>
+      <div *ngIf="isLoading" class="ion-text-center">
+        <ion-spinner></ion-spinner>
+        <p>Loading profile...</p>
+      </div>
     </ion-content>
   `,
   styles: [`
     ion-item {
-      margin-bottom: 16px;
+      --background: var(--ion-color-light);
+      --border-radius: 8px;
+      margin-bottom: 8px;
     }
-    .spinner-center {
-      display: block;
-      margin: auto;
-      margin-top: 20px;
+
+    ion-item-divider {
+      --background: transparent;
+      --padding-top: 20px;
+      --padding-bottom: 10px;
+      font-weight: bold;
+      font-size: 1.1em;
+    }
+
+    ion-textarea {
+      --background: var(--ion-color-light);
+      --padding-start: 10px;
+      --padding-end: 10px;
+      --border-radius: 8px;
+    }
+
+    ion-select {
+      width: 100%;
+      max-width: 100%;
+    }
+
+    .error-message {
+      color: var(--ion-color-danger);
+      font-size: 0.8em;
+      margin: 4px 0;
     }
   `],
   standalone: true,
@@ -81,11 +137,11 @@ export class EditProfilePage implements OnInit {
     private toastCtrl: ToastController
   ) {
     this.profileForm = this.fb.group({
-      name: ['', Validators.required],
-      email: ['', [Validators.required, Validators.email]],
-      phone: [''],
-      address: [''],
-      bio: ['']
+      phone: ['', [Validators.required, Validators.pattern('^[0-9]{10}$')]],
+      address: ['', Validators.required],
+      bio: ['', [Validators.required, Validators.minLength(50)]],
+      hourly_rate: ['', [Validators.required, Validators.min(0)]],
+      skills: [[], [Validators.required, Validators.minLength(1)]]
     });
   }
 
@@ -94,11 +150,11 @@ export class EditProfilePage implements OnInit {
       const profile = await this.workerService.getProfile().toPromise();
       if (profile) {
         this.profileForm.patchValue({
-          name: profile.name,
-          email: profile.email,
           phone: profile.phone,
           address: profile.address,
-          bio: profile.bio
+          bio: profile.bio,
+          hourly_rate: profile.hourly_rate,
+          skills: profile.skills || []
         });
       }
     } catch (error) {
@@ -116,6 +172,7 @@ export class EditProfilePage implements OnInit {
 
   async onSubmit() {
     if (this.profileForm.valid) {
+      this.isLoading = true;
       try {
         await this.workerService.updateProfile(this.profileForm.value).toPromise();
         
@@ -135,7 +192,16 @@ export class EditProfilePage implements OnInit {
           color: 'danger'
         });
         await toast.present();
+      } finally {
+        this.isLoading = false;
       }
+    } else {
+      const toast = await this.toastCtrl.create({
+        message: 'Please fill in all required fields correctly',
+        duration: 2000,
+        color: 'warning'
+      });
+      await toast.present();
     }
   }
 } 

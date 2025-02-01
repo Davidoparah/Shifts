@@ -1,0 +1,117 @@
+// Common styles for shift pages
+:host {
+  --page-margin: 16px;
+  --section-margin: 32px;
+  --item-spacing: 16px;
+  --card-radius: 16px;
+}
+
+ion-content {
+  --background: #f5f7fa;
+}
+
+.card-container {
+  background: #ffffff;
+  border-radius: var(--card-radius);
+  margin: var(--page-margin);
+  padding: 20px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 8px 0;
+
+  ion-icon {
+    font-size: 24px;
+    margin-right: 12px;
+    padding: 8px;
+    border-radius: 50%;
+    background: var(--ion-color-primary-tint);
+    color: var(--ion-color-primary);
+  }
+
+  h2 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--ion-color-dark);
+  }
+}
+
+ion-item {
+  --padding-start: 0;
+  --inner-padding-end: 0;
+  --background: transparent;
+  --border-color: #edf2f7;
+  margin-bottom: var(--item-spacing);
+  border-radius: 8px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  ion-label {
+    margin-bottom: 8px;
+    color: var(--ion-color-medium);
+    font-weight: 500;
+  }
+
+  ion-input, ion-textarea {
+    --padding-start: 16px;
+    --padding-end: 16px;
+    --padding-top: 12px;
+    --padding-bottom: 12px;
+    --background: #f8fafc;
+    border-radius: 8px;
+    font-size: 1rem;
+  }
+}
+
+ion-badge {
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-transform: capitalize;
+}
+
+.action-button {
+  margin: var(--page-margin);
+  
+  ion-button {
+    --border-radius: 12px;
+    --box-shadow: 0 4px 12px rgba(var(--ion-color-primary-rgb), 0.2);
+    font-weight: 600;
+    height: 48px;
+    font-size: 1rem;
+    
+    ion-icon {
+      font-size: 1.2rem;
+      margin-right: 8px;
+    }
+  }
+}
+
+// Loading state
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: var(--page-margin);
+  
+  ion-spinner {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 16px;
+  }
+  
+  p {
+    color: var(--ion-color-medium);
+    font-size: 1rem;
+  }
+} 

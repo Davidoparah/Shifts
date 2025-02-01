@@ -37,29 +37,9 @@ export class AdminPage implements OnInit {
 
   async logout() {
     try {
-      const loading = await this.loadingCtrl.create({
-        message: 'Logging out...'
-      });
-      await loading.present();
-
-      await this.authService.logout().toPromise();
-
-      const toast = await this.toastCtrl.create({
-        message: 'Logged out successfully',
-        duration: 2000,
-        color: 'success'
-      });
-      await toast.present();
+      this.authService.logout();
     } catch (error) {
-      console.error('Error during logout:', error);
-      const toast = await this.toastCtrl.create({
-        message: 'Failed to logout',
-        duration: 2000,
-        color: 'danger'
-      });
-      await toast.present();
-    } finally {
-      this.loadingCtrl.dismiss();
+      console.error('Logout error:', error);
     }
   }
 

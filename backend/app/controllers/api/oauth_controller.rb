@@ -1,7 +1,6 @@
 module Api
   class OauthController < ApplicationController
     skip_before_action :authenticate_request
-    skip_before_action :verify_authenticity_token, raise: false
 
     def callback
       auth = request.env['omniauth.auth']

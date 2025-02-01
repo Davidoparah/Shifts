@@ -1,38 +1,51 @@
 Rails.application.routes.draw do
   namespace :api do
-    # Authentication routes
+    # Auth routes
     post 'auth/login', to: 'auth#login'
     post 'auth/register', to: 'auth#register'
-    post 'auth/logout', to: 'auth#logout'
-    post 'auth/forgot-password', to: 'auth#forgot_password'
-    post 'auth/reset-password', to: 'auth#reset_password'
+    post 'auth/refresh_token', to: 'auth#refresh_token'
+    post 'auth/forgot_password', to: 'auth#forgot_password'
+    post 'auth/reset_password', to: 'auth#reset_password'
+    get 'auth/me', to: 'auth#me'
 
     # Worker profile routes
-    resources :worker_profiles, only: [:show, :create, :update] do
+    resource :worker_profile, only: [:show, :create, :update] do
+      put 'availability', to: 'worker_profiles#update_availability'
+    end
+
+    # Shifts routes
+    resources :shifts do
+      collection do
+        get 'available'
+        get 'worker'
+        get 'history'
+      end
       member do
-        patch :update_availability
-        post :add_photo
+        post 'apply'
+        post 'cancel'
+        post 'start'
+        post 'complete'
       end
     end
 
-    # Shift routes
-    resources :shifts do
-      member do
-        post :apply
-        post :start
-        post :complete
-        post :cancel
-      end
+    # Business routes
+    resources :businesses, only: [:show, :update] do
+      resources :shifts, only: [:index, :create]
+    end
 
-      # Chat routes nested under shifts
-      resources :chat_messages, only: [:index, :create]
-
-      # Incident report routes nested under shifts
-      resources :incident_reports do
+    # Admin routes
+    namespace :admin do
+      resources :users, only: [:index, :show, :update] do
         member do
-          post :add_photo
+          post 'toggle_status'
         end
       end
+      resources :businesses, only: [:index, :show, :update] do
+        member do
+          post 'toggle_status'
+        end
+      end
+      get 'analytics', to: 'dashboard#analytics'
     end
   end
 end 

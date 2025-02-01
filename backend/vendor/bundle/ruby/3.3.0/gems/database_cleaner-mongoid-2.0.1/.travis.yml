@@ -1,0 +1,24 @@
+language: ruby
+services:
+  - mongodb
+rvm:
+  - 2.5
+  - 2.6
+  - 2.7
+gemfile:
+  - gemfiles/mongoid3.gemfile
+  - gemfiles/mongoid4.gemfile
+  - gemfiles/mongoid5.gemfile
+  - gemfiles/mongoid6.gemfile
+  - gemfiles/mongoid7.gemfile
+jobs:
+  exclude:
+  # mongoid3-5 incompatible with BigDecimal changes in 2.7, it seems?
+  - rvm: 2.7
+    gemfile: gemfiles/mongoid3.gemfile
+  - rvm: 2.7
+    gemfile: gemfiles/mongoid4.gemfile
+  - rvm: 2.7
+    gemfile: gemfiles/mongoid5.gemfile
+before_script:
+  - bin/setup
