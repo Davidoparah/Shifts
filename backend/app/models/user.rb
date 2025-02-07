@@ -5,12 +5,13 @@ class User
 
   # Fields
   field :email, type: String
+  field :password_digest, type: String
   field :first_name, type: String
   field :last_name, type: String
-  field :phone, type: String
   field :role, type: String
-  field :status, type: String, default: 'pending'
-  field :password_digest, type: String
+  field :phone, type: String
+  field :address, type: String
+  field :status, type: String, default: 'active'
   field :last_login_at, type: Time
   field :verification_token, type: String
   field :verification_sent_at, type: Time
@@ -19,18 +20,19 @@ class User
   field :reset_password_sent_at, type: Time
 
   # Relationships
-  has_one :worker_profile, autobuild: true
+  has_one :worker_profile, dependent: :destroy
+  has_one :business, foreign_key: :owner_id, dependent: :destroy
   has_many :shifts, inverse_of: :worker
-  belongs_to :business, optional: true
   has_many :chat_messages, inverse_of: :sender
   has_many :incident_reports, inverse_of: :reporter
 
   # Validations
   validates :email, presence: true, uniqueness: true, format: { with: URI::MailTo::EMAIL_REGEXP }
+  validates :password, length: { minimum: 6 }, if: :password_required?
   validates :first_name, presence: true
   validates :last_name, presence: true
   validates :role, presence: true, inclusion: { in: %w[admin business_owner worker] }
-  validates :status, inclusion: { in: %w[pending active suspended] }
+  validates :status, inclusion: { in: %w[active inactive suspended] }
   validate :business_owner_must_have_business
 
   # Indexes
@@ -42,8 +44,9 @@ class User
 
   # Callbacks
   before_create :generate_verification_token
+  before_save :downcase_email
   
-  # Secure password
+  # Enable password encryption
   has_secure_password
 
   # Scopes
@@ -51,11 +54,11 @@ class User
   scope :business_owners, -> { where(role: 'business_owner') }
   scope :workers, -> { where(role: 'worker') }
   scope :active, -> { where(status: 'active') }
-  scope :pending, -> { where(status: 'pending') }
+  scope :inactive, -> { where(status: 'inactive') }
   scope :suspended, -> { where(status: 'suspended') }
 
   def name
-    "#{first_name} #{last_name}"
+    "#{first_name} #{last_name}".strip
   end
 
   def admin?
@@ -93,6 +96,13 @@ class User
     )
   end
 
+  def clear_password_reset_token
+    update(
+      reset_password_token: nil,
+      reset_password_sent_at: nil
+    )
+  end
+
   def password_reset_expired?
     reset_password_sent_at.present? && reset_password_sent_at < 2.hours.ago
   end
@@ -115,5 +125,13 @@ class User
     if business_owner? && business.nil?
       errors.add(:business, "must be associated with a business owner")
     end
+  end
+
+  def password_required?
+    password_digest.blank? || password.present?
+  end
+
+  def downcase_email
+    self.email = email.downcase if email.present?
   end
 end 

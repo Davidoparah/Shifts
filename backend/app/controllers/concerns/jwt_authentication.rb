@@ -7,42 +7,35 @@ module JwtAuthentication
   class TokenExpiredError < AuthError; end
   class InvalidTokenError < AuthError; end
   class RefreshTokenError < AuthError; end
+  class UnauthorizedError < StandardError; end
 
-  def jwt_encode(payload, exp = JWT.expiration_time.from_now)
-    payload = payload.dup
+  ALGORITHM = 'HS256'
+  REFRESH_EXPIRATION = 7.days
+
+  def jwt_encode(payload, exp = 24.hours.from_now)
     payload[:exp] = exp.to_i
-    payload[:iat] = Time.current.to_i
-    token = JWT.encode(payload, JWT.secret_key, JWT.algorithm)
-    Rails.logger.info "Token generated for user_id: #{payload[:user_id]}, expires: #{Time.at(payload[:exp])}"
-    token
+    JWT.encode(payload, secret_key, ALGORITHM)
   end
 
   def generate_refresh_token(user_id)
     payload = {
       user_id: user_id,
-      exp: JWT.refresh_expiration_time.from_now.to_i,
+      exp: REFRESH_EXPIRATION.from_now.to_i,
       iat: Time.current.to_i,
       type: 'refresh'
     }
-    token = JWT.encode(payload, JWT.secret_key, JWT.algorithm)
+    token = JWT.encode(payload, secret_key, ALGORITHM)
     Rails.logger.info "Refresh token generated for user_id: #{user_id}, expires: #{Time.at(payload[:exp])}"
     token
   end
 
   def jwt_decode(token)
     begin
-      Rails.logger.debug "Attempting to decode token: #{token[0..10]}..."
-      decoded = JWT.decode(token, JWT.secret_key, true, { 
-        algorithm: JWT.algorithm,
-        verify_iat: true
-      })[0]
-      Rails.logger.info "Token decoded successfully for user_id: #{decoded['user_id']}"
+      decoded = JWT.decode(token, secret_key, true, { algorithm: ALGORITHM })[0]
       HashWithIndifferentAccess.new(decoded)
     rescue JWT::ExpiredSignature
-      Rails.logger.warn "Token expired: #{token[0..10]}..."
       raise TokenExpiredError, 'Token has expired'
-    rescue JWT::DecodeError => e
-      Rails.logger.error "Token decode error: #{e.message}"
+    rescue JWT::DecodeError
       raise InvalidTokenError, 'Invalid token'
     end
   end
@@ -72,6 +65,8 @@ module JwtAuthentication
       Rails.logger.debug "Processing token: #{token[0..10]}..."
       decoded = jwt_decode(token)
       @current_user = User.find(decoded[:user_id])
+      
+      raise UnauthorizedError unless @current_user&.active?
       Rails.logger.info "Request authenticated for user_id: #{@current_user.id}, role: #{@current_user.role}"
     rescue TokenExpiredError
       Rails.logger.warn "Token expired during request"
@@ -85,6 +80,12 @@ module JwtAuthentication
         error: 'Invalid token',
         code: 'invalid_token'
       }, status: :unauthorized
+    rescue UnauthorizedError
+      Rails.logger.error "User is not active"
+      render json: { 
+        error: 'Account is not active',
+        code: 'account_inactive'
+      }, status: :unauthorized
     rescue StandardError => e
       Rails.logger.error "Unexpected authentication error: #{e.message}\n#{e.backtrace.join("\n")}"
       render json: { 
@@ -92,5 +93,11 @@ module JwtAuthentication
         code: 'auth_error'
       }, status: :unauthorized
     end
+  end
+
+  private
+
+  def secret_key
+    Rails.application.credentials.secret_key_base || ENV['JWT_SECRET']
   end
 end 

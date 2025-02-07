@@ -1,7 +1,9 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { environment } from '../../environments/environment';
+import { Observable, from, switchMap } from 'rxjs';
+import { ApiService } from '../core/services/api.service';
+import { LoadingService } from '../core/services/loading.service';
+import { ToastService } from '../core/services/toast.service';
+import { catchError, finalize, tap } from 'rxjs/operators';
 
 export interface Incident {
   id: string;
@@ -29,41 +31,73 @@ export interface CreateIncidentDTO {
   providedIn: 'root'
 })
 export class IncidentService {
-  private apiUrl = `${environment.apiUrl}/incidents`;
+  private readonly path = '/incidents';
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private apiService: ApiService,
+    private loadingService: LoadingService,
+    private toastService: ToastService
+  ) {}
 
-  getIncidents(): Observable<Incident[]> {
-    return this.http.get<Incident[]>(this.apiUrl);
+  getIncidents(params: any = {}): Observable<Incident[]> {
+    return this.apiService.get<Incident[]>(this.path, params).pipe(
+      catchError(error => {
+        this.toastService.error('Failed to load incidents');
+        throw error;
+      })
+    );
   }
 
   getIncident(id: string): Observable<Incident> {
-    return this.http.get<Incident>(`${this.apiUrl}/${id}`);
+    return this.apiService.get<Incident>(`${this.path}/${id}`).pipe(
+      catchError(error => {
+        this.toastService.error('Failed to load incident details');
+        throw error;
+      })
+    );
   }
 
   createIncident(incident: CreateIncidentDTO): Observable<Incident> {
-    return this.http.post<Incident>(this.apiUrl, { incident });
+    return from(this.loadingService.show('create-incident', 'Creating incident...')).pipe(
+      switchMap(() => this.apiService.post<Incident>(this.path, { incident })),
+      tap(() => this.toastService.success('Incident reported successfully')),
+      catchError(error => {
+        this.toastService.error('Failed to create incident');
+        throw error;
+      }),
+      finalize(() => this.loadingService.hide('create-incident'))
+    );
   }
 
   updateIncident(id: string, incident: Partial<Incident>): Observable<Incident> {
-    return this.http.patch<Incident>(`${this.apiUrl}/${id}`, { incident });
+    return this.apiService.patch<Incident>(`${this.path}/${id}`, { incident }).pipe(
+      tap(() => this.toastService.success('Incident updated successfully')),
+      catchError(error => {
+        this.toastService.error('Failed to update incident');
+        throw error;
+      })
+    );
   }
 
   deleteIncident(id: string): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+    return this.apiService.delete<void>(`${this.path}/${id}`).pipe(
+      tap(() => this.toastService.success('Incident deleted successfully')),
+      catchError(error => {
+        this.toastService.error('Failed to delete incident');
+        throw error;
+      })
+    );
   }
 
   uploadPhoto(file: File): Observable<{ url: string }> {
     const formData = new FormData();
     formData.append('photo', file, file.name);
 
-    // Don't set Content-Type header, let the browser set it with the correct boundary
-    const headers = new HttpHeaders();
-    
-    return this.http.post<{ url: string }>(
-      `${this.apiUrl}/upload_photo`,
-      formData,
-      { headers }
+    return this.apiService.post<{ url: string }>(`${this.path}/upload_photo`, formData).pipe(
+      catchError(error => {
+        this.toastService.error('Failed to upload photo');
+        throw error;
+      })
     );
   }
 } 

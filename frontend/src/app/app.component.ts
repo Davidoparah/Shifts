@@ -1,8 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { IonApp, IonRouterOutlet } from '@ionic/angular/standalone';
 import { CommonModule } from '@angular/common';
-import { ThemeService } from './services/theme.service';
-import { AuthService } from './services/auth.service';
+import { ThemeService } from './core/services/theme.service';
+import { AuthService } from './core/services/auth.service';
 import { filter, map } from 'rxjs/operators';
 
 @Component({
