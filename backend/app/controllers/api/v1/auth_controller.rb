@@ -63,15 +63,24 @@ module Api
       end
 
       def register
-        # Extract user data from nested params if present
-        user_data = params[:auth] || params
-        
         begin
+          # Extract user data from nested params
+          raw_data = params[:auth] || params
+          
+          # Process the name field
+          if raw_data[:name].present?
+            name_parts = raw_data[:name].to_s.strip.split(' ', 2)
+            raw_data = raw_data.to_unsafe_h.merge(
+              first_name: name_parts[0],
+              last_name: name_parts[1] || name_parts[0]
+            )
+          end
+          
           # Create business first if user is a business owner
-          business = create_business_for_owner(user_data) if business_owner?(user_data)
+          business = create_business_for_owner(raw_data) if business_owner?(raw_data)
           
           # Create user with processed parameters
-          user = create_user(user_data, business)
+          user = create_user(raw_data, business)
           
           if user.persisted?
             token = jwt_encode(user_id: user.id.to_s)
@@ -85,8 +94,10 @@ module Api
             cleanup_failed_registration(business)
             render_error('Registration failed', :unprocessable_entity, 'registration_failed', user.errors)
           end
+        rescue ActionController::ParameterMissing => e
+          render_error('Invalid parameters', :unprocessable_entity, 'invalid_parameters')
         rescue => e
-          cleanup_failed_registration(business)
+          cleanup_failed_registration(business) if defined?(business)
           log_error('Registration error', e)
           render_error('An error occurred during registration', :internal_server_error, 'registration_error')
         end
@@ -169,29 +180,44 @@ module Api
       end
 
       def user_params(params)
-        parameters = params.is_a?(ActionController::Parameters) ? params : ActionController::Parameters.new(params)
+        # Convert params to hash if it's ActionController::Parameters
+        data = params.respond_to?(:to_unsafe_h) ? params.to_unsafe_h : params.to_h
         
-        processed_params = parameters.permit(
+        # Permit only the allowed parameters
+        ActionController::Parameters.new(data).permit(
           :email,
           :password,
           :password_confirmation,
           :first_name,
           :last_name,
           :role,
-          :business,
-          :business_id,
           :phone,
-          :address,
-          :status
-        )
-        
-        processed_params.transform_values { |v| v.respond_to?(:strip) ? v.strip : v }
+          :address
+        ).tap do |permitted_params|
+          permitted_params.transform_values! { |v| v.respond_to?(:strip) ? v.strip : v }
+        end
       end
 
       def log_error(message, error)
         Rails.logger.error "#{message}: #{error.message}"
         Rails.logger.error error.backtrace.join("\n")
         Rails.logger.error "Parameters: #{params.inspect}"
+      end
+
+      def user_registration_params
+        params.require(:auth).permit(
+          :email, 
+          :password, 
+          :password_confirmation, 
+          :name, 
+          :role, 
+          :phone, 
+          :address,
+          :business_name,
+          :business_address,
+          :business_phone,
+          :business_email
+        )
       end
     end
   end

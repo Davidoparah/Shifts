@@ -12,6 +12,9 @@ gem "mongoid-geospatial"
 gem "kaminari-mongoid"
 gem "kaminari-actionview"
 
+# Authorization
+gem "cancancan", "~> 3.5"
+
 # Use the Puma web server
 gem "puma", ">= 5.0"
 

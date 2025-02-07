@@ -50,10 +50,21 @@ export class AuthService {
   }
 
   register(userData: any): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${environment.apiUrl}/auth/register`, userData)
+    const headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    };
+
+    return this.http.post<AuthResponse>(`${environment.apiUrl}/auth/register`, userData, { headers })
       .pipe(
         tap(response => this.handleAuthentication(response)),
-        catchError(this.handleError)
+        catchError(error => {
+          console.error('Registration error:', error);
+          if (error.status === 0) {
+            return throwError(() => new Error('Unable to connect to the server. Please check if the server is running.'));
+          }
+          return throwError(() => error);
+        })
       );
   }
 

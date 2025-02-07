@@ -13,6 +13,7 @@ export const microservicesConfig = {
       refreshToken: '/refresh-token',
       forgotPassword: '/forgot-password',
       resetPassword: '/reset-password',
+      me: '/me'
     }
   },
   shift: {

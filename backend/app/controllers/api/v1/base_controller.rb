@@ -26,11 +26,15 @@ module Api
         end
       end
 
-      def render_error(message, status = :unprocessable_entity)
-        render json: { 
+      def render_error(message, status = :unprocessable_entity, error_code = nil, details = nil)
+        response = { 
           error: message,
           status: status
-        }, status: status
+        }
+        response[:error_code] = error_code if error_code
+        response[:details] = details if details
+        
+        render json: response, status: status
       end
 
       def render_not_found(resource = 'Resource')
