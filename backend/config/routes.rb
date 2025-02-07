@@ -47,5 +47,11 @@ Rails.application.routes.draw do
       end
       get 'analytics', to: 'dashboard#analytics'
     end
+
+    resources :incidents do
+      collection do
+        post :upload_photo
+      end
+    end
   end
 end 

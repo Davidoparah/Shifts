@@ -10,7 +10,7 @@
       <ion-list>
         <ion-item>
           <ion-label position="floating">Email</ion-label>
-          <ion-input type="email" formControlName="email" [disabled]="isLoading"></ion-input>
+          <ion-input type="email" formControlName="email"></ion-input>
           <ion-note slot="error"
             *ngIf="loginForm.get('email')?.touched && loginForm.get('email')?.errors?.['required']">
             Email is required
@@ -22,7 +22,7 @@
 
         <ion-item>
           <ion-label position="floating">Password</ion-label>
-          <ion-input type="password" formControlName="password" [disabled]="isLoading"></ion-input>
+          <ion-input type="password" formControlName="password"></ion-input>
           <ion-note slot="error"
             *ngIf="loginForm.get('password')?.touched && loginForm.get('password')?.errors?.['required']">
             Password is required
@@ -35,7 +35,7 @@
       </ion-list>
 
       <div class="ion-padding">
-        <ion-button expand="block" type="submit" [disabled]="!loginForm.valid || isLoading">
+        <ion-button expand="block" type="submit" [disabled]="loginForm.invalid || isLoading">
           <ion-spinner name="dots" *ngIf="isLoading"></ion-spinner>
           <span *ngIf="!isLoading">Login</span>
         </ion-button>

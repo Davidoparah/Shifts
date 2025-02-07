@@ -1,18 +1,27 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, throwError } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 
-export interface IncidentReport {
-  id: number;
-  shift_id: number;
-  reporter_id: number;
+export interface Incident {
+  id: string;
   title: string;
   description: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  status: 'pending' | 'investigating' | 'resolved';
+  date: Date;
+  location: string;
+  status: 'pending' | 'reviewing' | 'resolved';
+  severity: 'low' | 'medium' | 'high';
+  photos: string[];
+  worker_id: string;
   created_at: string;
+  updated_at: string;
+}
+
+export interface CreateIncidentDTO {
+  title: string;
+  description: string;
+  location: string;
+  severity: 'low' | 'medium' | 'high';
   photos: string[];
 }
 
@@ -20,71 +29,41 @@ export interface IncidentReport {
   providedIn: 'root'
 })
 export class IncidentService {
-  private apiUrl = environment.apiUrl;
+  private apiUrl = `${environment.apiUrl}/incidents`;
 
   constructor(private http: HttpClient) {}
 
-  getIncidents(shiftId: number): Observable<IncidentReport[]> {
-    return this.http.get<IncidentReport[]>(`${this.apiUrl}/shifts/${shiftId}/incident_reports`)
-      .pipe(
-        catchError(error => {
-          console.error('Error fetching incidents:', error);
-          return throwError(() => error);
-        })
-      );
+  getIncidents(): Observable<Incident[]> {
+    return this.http.get<Incident[]>(this.apiUrl);
   }
 
-  getIncident(shiftId: number, reportId: number): Observable<IncidentReport> {
-    return this.http.get<IncidentReport>(
-      `${this.apiUrl}/shifts/${shiftId}/incident_reports/${reportId}`
-    ).pipe(
-      catchError(error => {
-        console.error('Error fetching incident:', error);
-        return throwError(() => error);
-      })
-    );
+  getIncident(id: string): Observable<Incident> {
+    return this.http.get<Incident>(`${this.apiUrl}/${id}`);
   }
 
-  createIncident(shiftId: number, report: Partial<IncidentReport>): Observable<IncidentReport> {
-    return this.http.post<IncidentReport>(
-      `${this.apiUrl}/shifts/${shiftId}/incident_reports`,
-      { incident_report: report }
-    ).pipe(
-      catchError(error => {
-        console.error('Error creating incident:', error);
-        return throwError(() => error);
-      })
-    );
+  createIncident(incident: CreateIncidentDTO): Observable<Incident> {
+    return this.http.post<Incident>(this.apiUrl, { incident });
   }
 
-  updateIncident(
-    shiftId: number,
-    reportId: number,
-    updates: Partial<IncidentReport>
-  ): Observable<IncidentReport> {
-    return this.http.patch<IncidentReport>(
-      `${this.apiUrl}/shifts/${shiftId}/incident_reports/${reportId}`,
-      { incident_report: updates }
-    ).pipe(
-      catchError(error => {
-        console.error('Error updating incident:', error);
-        return throwError(() => error);
-      })
-    );
+  updateIncident(id: string, incident: Partial<Incident>): Observable<Incident> {
+    return this.http.patch<Incident>(`${this.apiUrl}/${id}`, { incident });
   }
 
-  addPhoto(shiftId: number, reportId: number, photo: File): Observable<any> {
+  deleteIncident(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  }
+
+  uploadPhoto(file: File): Observable<{ url: string }> {
     const formData = new FormData();
-    formData.append('photo', photo);
+    formData.append('photo', file, file.name);
 
-    return this.http.post(
-      `${this.apiUrl}/shifts/${shiftId}/incident_reports/${reportId}/add_photo`,
-      formData
-    ).pipe(
-      catchError(error => {
-        console.error('Error adding photo:', error);
-        return throwError(() => error);
-      })
+    // Don't set Content-Type header, let the browser set it with the correct boundary
+    const headers = new HttpHeaders();
+    
+    return this.http.post<{ url: string }>(
+      `${this.apiUrl}/upload_photo`,
+      formData,
+      { headers }
     );
   }
 } 

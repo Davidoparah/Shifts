@@ -20,7 +20,7 @@ import { firstValueFrom } from 'rxjs';
   ]
 })
 export class LoginPage {
-  loginForm: FormGroup;
+  loginForm = this.initForm();
   isLoading = false;
   errorMessage = '';
 
@@ -29,10 +29,12 @@ export class LoginPage {
     private authService: AuthService,
     private router: Router,
     private toastCtrl: ToastController
-  ) {
-    this.loginForm = this.formBuilder.group({
-      email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(6)]]
+  ) {}
+
+  private initForm(): FormGroup {
+    return this.formBuilder.group({
+      email: [{ value: '', disabled: false }, [Validators.required, Validators.email]],
+      password: [{ value: '', disabled: false }, [Validators.required, Validators.minLength(6)]]
     });
   }
 
@@ -52,7 +54,10 @@ export class LoginPage {
       this.isLoading = true;
       this.errorMessage = '';
       
-      const { email, password } = this.loginForm.value;
+      // Disable form controls while loading
+      this.loginForm.disable();
+      
+      const { email, password } = this.loginForm.getRawValue();
       console.log('Attempting login with:', { email });
       
       const response = await firstValueFrom(this.authService.login(email, password));
@@ -103,6 +108,8 @@ export class LoginPage {
       await toast.present();
     } finally {
       this.isLoading = false;
+      // Re-enable form controls after loading
+      this.loginForm.enable();
     }
   }
 

@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { WorkerPage } from './worker.page';
 import { AvailableShiftsPage } from './shifts/available-shifts.page';
 import { MyShiftsPage } from './shifts/my-shifts.page';
+import { EarningsPage } from './earnings/earnings.page';
 
 export const routes: Routes = [
   {
@@ -23,12 +24,14 @@ export const routes: Routes = [
       },
       {
         path: 'earnings',
-        loadChildren: () => import('./earnings/earnings.routes').then(m => m.routes)
+        component: EarningsPage
       },
       {
         path: 'incidents',
         loadChildren: () => import('./incidents/incidents.routes').then(m => m.routes)
       },
+      // Temporarily comment out routes until components are implemented
+      /*
       {
         path: 'chat',
         loadChildren: () => import('./chat/chat.routes').then(m => m.routes)
@@ -45,6 +48,7 @@ export const routes: Routes = [
         path: 'profile',
         loadChildren: () => import('./profile/profile.routes').then(m => m.routes)
       }
+      */
     ]
   }
 ]; 

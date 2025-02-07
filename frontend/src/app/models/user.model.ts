@@ -10,8 +10,14 @@ export interface User {
   updated_at: string;
 }
 
-export interface AuthResponse {
+export interface TokenResponse {
   token: string;
   refresh_token: string;
-  user: User;
+}
+
+export interface AuthResponse {
+  token?: string;
+  refresh_token?: string;
+  user?: User;
+  auth?: TokenResponse;
 } 

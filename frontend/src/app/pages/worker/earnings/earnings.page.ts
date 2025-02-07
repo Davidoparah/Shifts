@@ -68,7 +68,7 @@ import { EarningsService, ShiftEarning } from '../../../services/earnings.servic
           <ion-label>
             <h2>{{ shift.title }}</h2>
             <p>{{ shift.date | date:'mediumDate' }}</p>
-            <p>{{ shift.hours }} hours @ {{ shift.rate | currency }}/hr</p>
+            <p>{{ shift.hours }} hours at {{ shift.rate | currency }}/hr</p>
           </ion-label>
           <ion-note slot="end" [color]="shift.status === 'completed' ? 'success' : 'medium'">
             {{ shift.earnings | currency }}

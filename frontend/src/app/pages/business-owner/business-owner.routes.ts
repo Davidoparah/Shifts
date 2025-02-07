@@ -10,7 +10,7 @@ export const routes: Routes = [
     path: '',
     component: BusinessOwnerPage,
     canActivate: [AuthGuard],
-    canActivateChild: [roleGuard],
+    canMatch: [roleGuard],
     data: { role: 'business_owner' },
     children: [
       {

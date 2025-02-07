@@ -25,10 +25,35 @@ export const roleGuard = (route: ActivatedRouteSnapshot) => {
     return false;
   }
 
-  const hasRole = currentUser.role.toLowerCase() === requiredRole.toLowerCase();
+  // Normalize roles for comparison
+  const normalizedUserRole = currentUser.role.toLowerCase().replace(/[^a-z0-9]/g, '_');
+  const normalizedRequiredRole = requiredRole.toLowerCase().replace(/[^a-z0-9]/g, '_');
+  
+  console.log('Role check:', {
+    userRole: currentUser.role,
+    normalizedUserRole,
+    requiredRole,
+    normalizedRequiredRole
+  });
+
+  const hasRole = normalizedUserRole === normalizedRequiredRole;
   if (!hasRole) {
     console.warn('Access denied. Required role:', requiredRole, 'Current role:', currentUser.role);
-    router.navigate(['/auth/login']);
+    
+    // Redirect based on user's actual role
+    switch (normalizedUserRole) {
+      case 'admin':
+        router.navigate(['/admin/dashboard']);
+        break;
+      case 'business_owner':
+        router.navigate(['/business-owner/shifts']);
+        break;
+      case 'worker':
+        router.navigate(['/worker/available-shifts']);
+        break;
+      default:
+        router.navigate(['/auth/login']);
+    }
     return false;
   }
 

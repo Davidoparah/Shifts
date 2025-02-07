@@ -135,8 +135,8 @@ module Api
     end
 
     def authorize_business_owner!
-      unless current_user.role == 'BUSINESS_OWNER'
-        render json: { error: 'Unauthorized' }, status: :unauthorized
+      unless current_user.business_owner?
+        render json: { error: 'Unauthorized. Business owner access required.' }, status: :unauthorized
       end
     end
   end

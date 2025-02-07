@@ -13,6 +13,7 @@ class WorkerProfile
   field :total_shifts, type: Integer, default: 0
 
   belongs_to :user
+  has_many :incidents, dependent: :destroy
 
   validates :phone, presence: true
   validates :address, presence: true

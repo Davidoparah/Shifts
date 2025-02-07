@@ -99,7 +99,7 @@ module Api
           email: @business.email,
           password: password,
           password_confirmation: password,
-          role: 'BUSINESS_OWNER',
+          role: 'business_owner',
           business_id: @business.id
         )
 

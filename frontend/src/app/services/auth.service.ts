@@ -22,7 +22,19 @@ export class AuthService {
     let storedUser = null;
     try {
       const storedUserStr = localStorage.getItem('currentUser');
-      storedUser = storedUserStr ? JSON.parse(storedUserStr) : null;
+      const token = localStorage.getItem('token');
+      const refreshToken = localStorage.getItem('refresh_token');
+      
+      if (storedUserStr) {
+        storedUser = JSON.parse(storedUserStr);
+        // Ensure token is attached to user object
+        if (token) {
+          storedUser.token = token;
+        }
+        if (refreshToken) {
+          storedUser.refresh_token = refreshToken;
+        }
+      }
     } catch (error) {
       console.error('Error accessing localStorage:', error);
     }
@@ -58,9 +70,16 @@ export class AuthService {
           if (!response.user || !response.token || !response.refresh_token) {
             throw new Error('Invalid response format from server');
           }
-          this.setCurrentUser(response.user);
+          
+          // Store tokens separately
           this.safeLocalStorageSet('token', response.token);
           this.safeLocalStorageSet('refresh_token', response.refresh_token);
+          
+          // Attach tokens to user object
+          response.user.token = response.token;
+          response.user.refresh_token = response.refresh_token;
+          
+          this.setCurrentUser(response.user);
         }),
         catchError(error => {
           console.error('Login error:', error);
@@ -85,22 +104,46 @@ export class AuthService {
     return this.http.post<AuthResponse>(`${environment.apiUrl}/auth/refresh_token`, { refresh_token: refreshToken })
       .pipe(
         tap(response => {
-          if (!response.token || !response.refresh_token) {
+          console.log('Refresh token response:', response);
+          
+          // Handle both response formats
+          const token = response.token || response.auth?.token;
+          const newRefreshToken = response.refresh_token || response.auth?.refresh_token;
+          const user = response.user;
+          
+          if (!token) {
+            console.error('Invalid token refresh response format:', response);
             throw new Error('Invalid token refresh response');
           }
-          localStorage.setItem('token', response.token);
-          localStorage.setItem('refresh_token', response.refresh_token);
+          
+          // Store tokens
+          this.safeLocalStorageSet('token', token);
+          if (newRefreshToken) {
+            this.safeLocalStorageSet('refresh_token', newRefreshToken);
+          }
+          
+          // Update current user
           const currentUser = this.getCurrentUser();
           if (currentUser) {
-            currentUser.token = response.token;
-            currentUser.refresh_token = response.refresh_token;
+            currentUser.token = token;
+            if (newRefreshToken) {
+              currentUser.refresh_token = newRefreshToken;
+            }
+            if (user) {
+              // Update user properties if provided
+              Object.assign(currentUser, user);
+            }
             this.setCurrentUser(currentUser);
           }
         }),
         catchError(error => {
           console.error('Token refresh failed:', error);
-          this.logout();
-          return throwError(() => new Error('Token refresh failed'));
+          if (error.status === 401) {
+            console.log('Refresh token expired or invalid, logging out');
+            this.logout();
+            return throwError(() => new Error('Session expired. Please log in again.'));
+          }
+          return throwError(() => new Error(error.error?.message || error.message || 'Token refresh failed'));
         })
       );
   }
@@ -115,7 +158,7 @@ export class AuthService {
 
   private setCurrentUser(user: User) {
     try {
-      localStorage.setItem('currentUser', JSON.stringify(user));
+      this.safeLocalStorageSet('currentUser', JSON.stringify(user));
       this.currentUserSubject.next(user);
     } catch (error) {
       console.error('Error setting current user:', error);
