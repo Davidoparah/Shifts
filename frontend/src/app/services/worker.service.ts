@@ -1,8 +1,9 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, throwError } from 'rxjs';
-import { catchError } from 'rxjs/operators';
-import { environment } from '../../environments/environment';
+import { Observable } from 'rxjs';
+import { BaseHttpService } from '../core/services/base-http.service';
+import { PaginatedResponse } from '../models/common.model';
+import { Shift } from '../models/shift.model';
 
 export interface Worker {
   id: string;
@@ -29,135 +30,139 @@ export interface WorkerProfile {
   };
   rating: number;
   total_shifts: number;
+  total_earnings: number;
+  completed_shifts: number;
+  cancelled_shifts: number;
+  average_rating: number;
   user: {
     id: string;
     first_name: string;
     last_name: string;
     email: string;
+    avatar_url?: string;
   };
-}
-
-export interface Shift {
-  id: string;
-  title: string;
-  start_time: string;
-  end_time: string;
-  rate: number;
-  location: string;
-  status: 'available' | 'assigned' | 'in_progress' | 'completed' | 'cancelled';
-  requirements?: string[];
-  dress_code?: string;
-  notes?: string;
-  rating?: number;
-  feedback?: string;
-  business: {
+  documents: {
+    id: string;
+    type: string;
+    status: 'pending' | 'verified' | 'rejected';
+    url: string;
+    expiry_date?: string;
+  }[];
+  certifications: {
     id: string;
     name: string;
-  };
+    issuer: string;
+    issue_date: string;
+    expiry_date?: string;
+    verification_url?: string;
+  }[];
+}
+
+export interface WorkerAvailability {
+  weekday: string;
+  enabled: boolean;
+  start_time: string;
+  end_time: string;
+}
+
+export interface WorkerDocument {
+  id: string;
+  type: string;
+  file: File;
+  expiry_date?: string;
 }
 
 @Injectable({
   providedIn: 'root'
 })
-export class WorkerService {
-  private apiUrl = `${environment.apiUrl}/worker_profile`;
-  private shiftsUrl = `${environment.apiUrl}/shifts`;
-
-  constructor(private http: HttpClient) {}
+export class WorkerService extends BaseHttpService {
+  constructor(http: HttpClient) {
+    super(http, 'worker');
+  }
 
   getAvailableWorkers(): Observable<Worker[]> {
-    return this.http.get<Worker[]>(`${this.apiUrl}/available`);
+    return this.get<Worker[]>(this.endpoints['available']);
   }
 
   getWorkerProfile(id: string): Observable<Worker> {
-    return this.http.get<Worker>(`${this.apiUrl}/${id}`);
+    return this.get<Worker>(this.buildUrl(this.endpoints['profile'], { id }));
   }
 
   updateWorkerStatus(id: string, status: string): Observable<Worker> {
-    return this.http.patch<Worker>(`${this.apiUrl}/${id}/status`, { status });
+    return this.patch<Worker>(this.buildUrl(this.endpoints['profile'], { id }), { status });
   }
 
   rateWorker(id: string, rating: number, feedback?: string): Observable<Worker> {
-    return this.http.post<Worker>(`${this.apiUrl}/${id}/rate`, { rating, feedback });
+    return this.post<Worker>(this.buildUrl(this.endpoints['rate'], { id }), { rating, feedback });
   }
 
-  // Profile management
+  // Profile Management
   getProfile(): Observable<WorkerProfile> {
-    return this.http.get<WorkerProfile>(this.apiUrl)
-      .pipe(
-        catchError(error => {
-          console.error('Error fetching worker profile:', error);
-          if (error.status === 403) {
-            console.error('Access forbidden. Make sure you are logged in as a worker');
-          }
-          return throwError(() => error);
-        })
-      );
+    return this.get<WorkerProfile>(this.endpoints['profile']);
   }
 
   updateProfile(data: Partial<WorkerProfile>): Observable<WorkerProfile> {
-    return this.http.put<WorkerProfile>(this.apiUrl, data)
-      .pipe(
-        catchError(error => {
-          console.error('Error updating worker profile:', error);
-          if (error.status === 403) {
-            console.error('Access forbidden. Make sure you are logged in as a worker');
-          }
-          return throwError(() => error);
-        })
-      );
+    return this.put<WorkerProfile>(this.endpoints['profile'], data);
   }
 
-  updateAvailability(availability: any): Observable<WorkerProfile> {
-    return this.http.put<WorkerProfile>(`${this.apiUrl}/availability`, { availability })
-      .pipe(catchError(this.handleError));
+  updateAvailability(availability: WorkerAvailability[]): Observable<WorkerProfile> {
+    return this.put<WorkerProfile>(this.endpoints['availability'], { availability });
   }
 
-  // Shift management
-  getAvailableShifts(): Observable<Shift[]> {
-    return this.http.get<Shift[]>(`${this.shiftsUrl}/available`)
-      .pipe(
-        catchError(error => {
-          console.error('Error fetching available shifts:', error);
-          return throwError(() => error);
-        })
-      );
+  // Document Management
+  uploadDocument(document: WorkerDocument): Observable<WorkerProfile> {
+    const formData = new FormData();
+    formData.append('type', document.type);
+    formData.append('file', document.file);
+    if (document.expiry_date) {
+      formData.append('expiry_date', document.expiry_date);
+    }
+    return this.post<WorkerProfile>(this.endpoints['documents'], formData);
   }
 
-  getUpcomingShifts(): Observable<Shift[]> {
-    return this.http.get<Shift[]>(`${this.shiftsUrl}/worker`)
-      .pipe(
-        catchError(error => {
-          console.error('Error fetching upcoming shifts:', error);
-          return throwError(() => error);
-        })
-      );
+  deleteDocument(documentId: string): Observable<void> {
+    return this.delete<void>(this.buildUrl(this.endpoints['document'], { id: documentId }));
   }
 
-  getCompletedShifts(): Observable<Shift[]> {
-    return this.http.get<Shift[]>(`${this.shiftsUrl}/history`)
-      .pipe(
-        catchError(error => {
-          console.error('Error fetching completed shifts:', error);
-          return throwError(() => error);
-        })
-      );
+  // Shift Management
+  getShifts(params: {
+    page?: number;
+    per_page?: number;
+    status?: string;
+    start_date?: string;
+    end_date?: string;
+  }): Observable<PaginatedResponse<Shift>> {
+    return this.get<PaginatedResponse<Shift>>(this.endpoints['shifts'], params);
   }
 
-  applyForShift(shiftId: number): Observable<void> {
-    return this.http.post<void>(`${this.shiftsUrl}/${shiftId}/apply`, {});
+  // Earnings
+  getEarnings(params: {
+    start_date?: string;
+    end_date?: string;
+    group_by?: 'day' | 'week' | 'month';
+  }): Observable<{
+    total: number;
+    breakdown: Array<{
+      period: string;
+      amount: number;
+      shifts_count: number;
+    }>;
+  }> {
+    return this.get(this.endpoints['earnings'], params);
   }
 
-  cancelShift(shiftId: number): Observable<void> {
-    return this.http.post<void>(`${this.shiftsUrl}/${shiftId}/cancel`, {});
-  }
-
-  startShift(shiftId: number): Observable<void> {
-    return this.http.post<void>(`${this.shiftsUrl}/${shiftId}/start`, {});
-  }
-
-  private handleError(error: any) {
-    console.error('An error occurred:', error);
-    return throwError(() => error);
+  // Ratings
+  getRatings(params: {
+    page?: number;
+    per_page?: number;
+  }): Observable<PaginatedResponse<{
+    id: string;
+    rating: number;
+    feedback?: string;
+    shift_id: string;
+    business_name: string;
+    created_at: string;
+  }>> {
+    return this.get(this.endpoints['ratings'], params);
   }
 } 

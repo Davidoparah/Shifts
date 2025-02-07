@@ -4,7 +4,8 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ShiftService } from '../../../services/shift.service';
-import { Shift } from '../../../models/shift.model';
+import { Shift, ShiftStatus } from '../../../models/shift.model';
+import { PaginatedResponse } from '../../../models/common.model';
 
 @Component({
   selector: 'app-my-shifts',
@@ -29,46 +30,57 @@ import { Shift } from '../../../models/shift.model';
     </ion-header>
 
     <ion-content>
+      <ion-refresher slot="fixed" (ionRefresh)="refreshShifts($event)">
+        <ion-refresher-content></ion-refresher-content>
+      </ion-refresher>
+
       <ion-list>
-        <ion-item *ngFor="let shift of filteredShifts">
-          <ion-label>
-            <h2>{{ shift.title }}</h2>
-            <h3>{{ shift.start_time | date:'medium' }}</h3>
-            <p>{{ shift.location }}</p>
-            <p>Rate: {{ shift.rate | currency }}/hr</p>
-          </ion-label>
-          <ion-badge slot="end" [color]="getStatusColor(shift.status)">
-            {{ shift.status }}
-          </ion-badge>
-          <ion-button slot="end" *ngIf="canStartShift(shift)" (click)="startShift(shift.id)">
-            Start
-          </ion-button>
-          <ion-button slot="end" *ngIf="canCompleteShift(shift)" (click)="completeShift(shift.id)">
-            Complete
-          </ion-button>
-        </ion-item>
+        <ion-item-sliding *ngFor="let shift of filteredShifts">
+          <ion-item>
+            <ion-label>
+              <h2>{{ shift.title }}</h2>
+              <h3>{{ shift.start_time | date:'medium' }}</h3>
+              <p>{{ shift.location }}</p>
+              <p>Rate: {{ shift.rate | currency }}/hr</p>
+            </ion-label>
+            <ion-badge slot="end" [color]="getStatusColor(shift.status)">
+              {{ shift.status }}
+            </ion-badge>
+          </ion-item>
+
+          <ion-item-options side="end">
+            <ion-item-option *ngIf="canStartShift(shift)" color="primary" (click)="startShift(shift.id)">
+              Start
+            </ion-item-option>
+            <ion-item-option *ngIf="canCompleteShift(shift)" color="success" (click)="completeShift(shift.id)">
+              Complete
+            </ion-item-option>
+          </ion-item-options>
+        </ion-item-sliding>
 
         <ion-item *ngIf="filteredShifts.length === 0">
           <ion-label class="ion-text-center">
-            <p>No {{ selectedSegment }} shifts found</p>
+            <p>No shifts found</p>
           </ion-label>
         </ion-item>
       </ion-list>
 
-      <ion-refresher slot="fixed" (ionRefresh)="refreshShifts($event)">
-        <ion-refresher-content></ion-refresher-content>
-      </ion-refresher>
+      <ion-spinner *ngIf="loading" class="ion-margin ion-text-center"></ion-spinner>
     </ion-content>
   `,
   styles: [`
     ion-segment {
       padding: 8px;
     }
-    ion-item {
-      --padding-start: 16px;
-      --padding-end: 16px;
-      --padding-top: 8px;
-      --padding-bottom: 8px;
+    ion-item-sliding {
+      margin-bottom: 1px;
+    }
+    ion-badge {
+      margin-left: 8px;
+    }
+    ion-spinner {
+      display: block;
+      margin: 20px auto;
     }
   `],
   standalone: true,
@@ -78,6 +90,9 @@ export class MyShiftsPage implements OnInit {
   shifts: Shift[] = [];
   filteredShifts: Shift[] = [];
   selectedSegment = 'upcoming';
+  loading = true;
+  currentPage = 1;
+  perPage = 10;
 
   constructor(
     private shiftService: ShiftService,
@@ -89,15 +104,22 @@ export class MyShiftsPage implements OnInit {
   }
 
   loadShifts() {
-    this.shiftService.getWorkerShifts().subscribe(
-      shifts => {
-        this.shifts = shifts.sort((a, b) => 
-          new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+    this.loading = true;
+    this.shiftService.getWorkerShifts({
+      page: this.currentPage,
+      per_page: this.perPage
+    }).subscribe({
+      next: (response: PaginatedResponse<Shift>) => {
+        this.shifts = [...response.data].sort((a: Shift, b: Shift) =>
+          new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
         );
-        this.filterShifts();
+        this.loading = false;
       },
-      error => console.error('Error loading shifts:', error)
-    );
+      error: (error: Error) => {
+        console.error('Error loading shifts:', error);
+        this.loading = false;
+      }
+    });
   }
 
   filterShifts() {
@@ -152,7 +174,7 @@ export class MyShiftsPage implements OnInit {
 
   async completeShift(shiftId: string) {
     try {
-      await this.shiftService.completeShift(shiftId).toPromise();
+      await this.shiftService.completeShift(shiftId, {}).toPromise();
       this.loadShifts();
       
       const toast = await this.toastCtrl.create({
@@ -173,19 +195,22 @@ export class MyShiftsPage implements OnInit {
   }
 
   refreshShifts(event: any) {
-    this.shiftService.getWorkerShifts().subscribe(
-      shifts => {
-        this.shifts = shifts.sort((a, b) => 
-          new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+    this.currentPage = 1;
+    this.shiftService.getWorkerShifts({
+      page: this.currentPage,
+      per_page: this.perPage
+    }).subscribe({
+      next: (response: PaginatedResponse<Shift>) => {
+        this.shifts = [...response.data].sort((a: Shift, b: Shift) =>
+          new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
         );
-        this.filterShifts();
         event.target.complete();
       },
-      error => {
+      error: (error: Error) => {
         console.error('Error refreshing shifts:', error);
         event.target.complete();
       }
-    );
+    });
   }
 
   getStatusColor(status: string): string {

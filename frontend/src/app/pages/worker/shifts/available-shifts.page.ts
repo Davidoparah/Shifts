@@ -3,7 +3,9 @@ import { IonicModule, ToastController, AlertController } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { ShiftService } from '../../../services/shift.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { Shift } from '../../../models/shift.model';
+import { ShiftApplication } from '../../../models/shift-application.model';
 
 @Component({
   selector: 'app-available-shifts',
@@ -114,32 +116,41 @@ import { Shift } from '../../../models/shift.model';
 export class AvailableShiftsPage implements OnInit {
   availableShifts: Shift[] = [];
   loading = true;
+  currentPage = 1;
+  perPage = 10;
+  currentUserId: string | undefined;
 
   constructor(
     private shiftService: ShiftService,
     private toastCtrl: ToastController,
-    private alertCtrl: AlertController
-  ) {}
-
-  ngOnInit() {
-    this.loadAvailableShifts();
+    private alertCtrl: AlertController,
+    private authService: AuthService
+  ) {
+    const currentUser = this.authService.getCurrentUser();
+    this.currentUserId = currentUser?.id;
   }
 
-  loadAvailableShifts() {
+  ngOnInit() {
+    this.loadShifts();
+  }
+
+  loadShifts() {
     this.loading = true;
-    this.shiftService.getAvailableShifts().subscribe(
-      shifts => {
-        this.availableShifts = shifts.sort((a, b) => 
+    this.shiftService.getAvailableShifts({
+      page: this.currentPage,
+      per_page: this.perPage
+    }).subscribe({
+      next: (response) => {
+        this.availableShifts = response.data.sort((a, b) =>
           new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
         );
         this.loading = false;
       },
-      error => {
-        console.error('Error loading available shifts:', error);
+      error: (error) => {
+        console.error('Error loading shifts:', error);
         this.loading = false;
-        this.showErrorToast('Failed to load available shifts');
       }
-    );
+    });
   }
 
   async applyForShift(shift: Shift) {
@@ -153,7 +164,7 @@ export class AvailableShiftsPage implements OnInit {
         },
         {
           text: 'Apply',
-          handler: () => this.submitApplication(shift)
+          handler: () => this.applyToShift(shift)
         }
       ]
     });
@@ -161,46 +172,50 @@ export class AvailableShiftsPage implements OnInit {
     await alert.present();
   }
 
-  private async submitApplication(shift: Shift) {
+  async applyToShift(shift: Shift) {
+    if (!this.currentUserId) {
+      await this.presentToast('Please log in to apply for shifts', 'warning');
+      return;
+    }
+
     try {
-      await this.shiftService.applyForShift(shift.id).toPromise();
-      
-      // Remove the shift from the list
-      this.availableShifts = this.availableShifts.filter(s => s.id !== shift.id);
-      
-      const toast = await this.toastCtrl.create({
-        message: 'Successfully applied for shift',
-        duration: 2000,
-        color: 'success'
-      });
-      await toast.present();
+      const application: ShiftApplication = {
+        worker_id: this.currentUserId,
+        availability_confirmed: true
+      };
+      await this.shiftService.applyToShift(shift.id, application).toPromise();
+      await this.presentToast('Successfully applied to shift');
+      this.loadShifts();
     } catch (error) {
-      console.error('Error applying for shift:', error);
-      this.showErrorToast('Failed to apply for shift');
+      console.error('Error applying to shift:', error);
+      await this.presentToast('Failed to apply to shift', 'danger');
     }
   }
 
   refreshShifts(event: any) {
-    this.shiftService.getAvailableShifts().subscribe(
-      shifts => {
-        this.availableShifts = shifts.sort((a, b) => 
+    this.currentPage = 1;
+    this.shiftService.getAvailableShifts({
+      page: this.currentPage,
+      per_page: this.perPage
+    }).subscribe({
+      next: (response) => {
+        this.availableShifts = response.data.sort((a, b) =>
           new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
         );
         event.target.complete();
       },
-      error => {
+      error: (error) => {
         console.error('Error refreshing shifts:', error);
         event.target.complete();
-        this.showErrorToast('Failed to refresh shifts');
       }
-    );
+    });
   }
 
-  private async showErrorToast(message: string) {
+  private async presentToast(message: string, color: string = 'success') {
     const toast = await this.toastCtrl.create({
       message,
-      duration: 3000,
-      color: 'danger',
+      duration: 2000,
+      color,
       position: 'bottom'
     });
     await toast.present();

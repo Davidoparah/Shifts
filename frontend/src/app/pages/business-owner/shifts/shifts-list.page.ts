@@ -114,7 +114,7 @@ export class ShiftsListPage implements OnInit {
     this.error = null;
     console.log('Loading shifts for page:', this.currentPage);
 
-    this.shiftService.getShifts(this.currentPage).subscribe({
+    this.shiftService.getShifts({ page: this.currentPage, per_page: 10 }).subscribe({
       next: (response) => {
         console.log('Received shifts response:', response);
         if (this.currentPage === 1) {

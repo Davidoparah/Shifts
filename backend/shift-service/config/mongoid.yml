@@ -1,0 +1,43 @@
+development:
+  clients:
+    default:
+      uri: <%= ENV['MONGODB_URI'] || 'mongodb+srv://davidoparah:admin123@shift-picker.hce8d.mongodb.net/odc_shift_development?retryWrites=true&w=majority&appName=Shift-picker' %>
+      options:
+        server_selection_timeout: 5
+        max_pool_size: <%= ENV['MONGODB_MAX_POOL_SIZE'] || 5 %>
+        min_pool_size: <%= ENV['MONGODB_MIN_POOL_SIZE'] || 1 %>
+        connect_timeout: 15
+        wait_queue_timeout: 15
+        ssl: true
+        ssl_verify: true
+
+test:
+  clients:
+    default:
+      uri: <%= ENV['MONGODB_URI'] || 'mongodb+srv://davidoparah:admin123@shift-picker.hce8d.mongodb.net/odc_shift_test?retryWrites=true&w=majority&appName=Shift-picker' %>
+      options:
+        server_selection_timeout: 5
+        max_pool_size: 1
+        min_pool_size: 1
+        ssl: true
+        ssl_verify: true
+
+production:
+  clients:
+    default:
+      uri: <%= ENV['MONGODB_URI'] %>
+      options:
+        server_selection_timeout: 5
+        max_pool_size: <%= ENV['MONGODB_MAX_POOL_SIZE'] || 10 %>
+        min_pool_size: <%= ENV['MONGODB_MIN_POOL_SIZE'] || 5 %>
+        connect_timeout: 15
+        wait_queue_timeout: 15
+        ssl: true
+        ssl_verify: true
+        write:
+          w: 1
+        read:
+          mode: :primary
+        max_retries: 3
+        retry_interval: 0.5
+        app_name: 'shift-service' 
