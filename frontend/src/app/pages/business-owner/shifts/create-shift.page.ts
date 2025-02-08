@@ -1,9 +1,10 @@
-import { Component } from '@angular/core';
+import { Component, ViewChild } from '@angular/core';
 import { IonicModule, ToastController } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, NgForm } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import { ShiftService } from '../../../services/shift.service';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-create-shift',
@@ -18,7 +19,7 @@ import { ShiftService } from '../../../services/shift.service';
     </ion-header>
 
     <ion-content class="ion-padding">
-      <form #shiftForm="ngForm" (ngSubmit)="createShift()">
+      <form #shiftForm="ngForm" (ngSubmit)="createShift()" (change)="validateForm()">
         <ion-list class="ion-margin-bottom">
           <ion-item class="ion-margin-bottom">
             <ion-label position="floating" color="primary">Title *</ion-label>
@@ -28,8 +29,12 @@ import { ShiftService } from '../../../services/shift.service';
               [(ngModel)]="shift.title" 
               name="title" 
               required
+              #title="ngModel"
               class="custom-input"
             ></ion-input>
+            <ion-note color="danger" *ngIf="title.invalid && (title.dirty || title.touched)">
+              Title is required
+            </ion-note>
           </ion-item>
 
           <ion-item class="ion-margin-bottom">
@@ -45,6 +50,7 @@ import { ShiftService } from '../../../services/shift.service';
                   (ionChange)="onStartTimeChange()" 
                   presentation="date-time"
                   color="primary"
+                  required
                 >
                 </ion-datetime>
               </ng-template>
@@ -63,10 +69,15 @@ import { ShiftService } from '../../../services/shift.service';
                   [min]="minEndDate" 
                   presentation="date-time"
                   color="primary"
+                  required
+                  (ionChange)="validateEndTime()"
                 >
                 </ion-datetime>
               </ng-template>
             </ion-modal>
+            <ion-note color="danger" *ngIf="!isEndTimeValid">
+              End time must be after start time
+            </ion-note>
           </ion-item>
 
           <ion-item class="ion-margin-bottom">
@@ -77,8 +88,12 @@ import { ShiftService } from '../../../services/shift.service';
               [(ngModel)]="shift.location_name" 
               name="location_name" 
               required
+              #locationName="ngModel"
               class="custom-input"
             ></ion-input>
+            <ion-note color="danger" *ngIf="locationName.invalid && (locationName.dirty || locationName.touched)">
+              Location name is required
+            </ion-note>
           </ion-item>
 
           <ion-item class="ion-margin-bottom">
@@ -89,8 +104,12 @@ import { ShiftService } from '../../../services/shift.service';
               [(ngModel)]="shift.location_address" 
               name="location_address" 
               required
+              #locationAddress="ngModel"
               class="custom-input"
             ></ion-input>
+            <ion-note color="danger" *ngIf="locationAddress.invalid && (locationAddress.dirty || locationAddress.touched)">
+              Location address is required
+            </ion-note>
           </ion-item>
 
           <ion-item class="ion-margin-bottom">
@@ -102,8 +121,12 @@ import { ShiftService } from '../../../services/shift.service';
               name="hourly_rate" 
               required 
               min="0"
+              #hourlyRate="ngModel"
               class="custom-input"
             ></ion-input>
+            <ion-note color="danger" *ngIf="hourlyRate.invalid && (hourlyRate.dirty || hourlyRate.touched)">
+              Valid hourly rate is required
+            </ion-note>
           </ion-item>
 
           <ion-item class="ion-margin-bottom">
@@ -147,11 +170,12 @@ import { ShiftService } from '../../../services/shift.service';
           <ion-button 
             expand="block" 
             type="submit" 
-            [disabled]="!shiftForm.valid || !isEndTimeValid"
+            [disabled]="!isFormValid || !isEndTimeValid || isSubmitting"
             color="primary"
             class="ion-margin-bottom"
           >
-            Create Shift
+            <ion-spinner *ngIf="isSubmitting"></ion-spinner>
+            <span *ngIf="!isSubmitting">Create Shift</span>
           </ion-button>
         </div>
       </form>
@@ -190,6 +214,11 @@ import { ShiftService } from '../../../services/shift.service';
       font-weight: 500;
     }
 
+    ion-note {
+      font-size: 0.8rem;
+      margin-top: 4px;
+    }
+
     .required-field::after {
       content: " *";
       color: var(--ion-color-danger);
@@ -211,6 +240,8 @@ import { ShiftService } from '../../../services/shift.service';
   imports: [IonicModule, CommonModule, FormsModule, RouterModule]
 })
 export class CreateShiftPage {
+  @ViewChild('shiftForm') shiftForm!: NgForm;
+  
   shift: any = {
     title: '',
     start_time: new Date(Date.now() + 3600000).toISOString(), // 1 hour from now
@@ -219,19 +250,28 @@ export class CreateShiftPage {
     location_address: '',
     hourly_rate: null,
     dress_code: '',
-    notes: ''
+    notes: '',
+    status: 'available'
   };
   
   requirementsText: string = '';
   minDate = new Date().toISOString();
   minEndDate = this.shift.start_time;
   isEndTimeValid = true;
+  isFormValid = false;
+  isSubmitting = false;
 
   constructor(
     private shiftService: ShiftService,
     private toastController: ToastController,
     private router: Router
   ) {}
+
+  validateForm() {
+    if (this.shiftForm) {
+      this.isFormValid = this.shiftForm.valid ?? false;
+    }
+  }
 
   onStartTimeChange() {
     this.minEndDate = this.shift.start_time;
@@ -247,15 +287,11 @@ export class CreateShiftPage {
   }
 
   async createShift() {
-    if (!this.isEndTimeValid) {
-      const toast = await this.toastController.create({
-        message: 'End time must be after start time',
-        duration: 2000,
-        color: 'danger'
-      });
-      toast.present();
+    if (!this.isFormValid || !this.isEndTimeValid || this.isSubmitting) {
       return;
     }
+
+    this.isSubmitting = true;
 
     try {
       // Convert requirements text to array
@@ -268,25 +304,40 @@ export class CreateShiftPage {
         requirements
       };
 
-      await this.shiftService.createShift(shiftData).toPromise();
+      console.log('Submitting shift data:', shiftData);
+
+      const response = await firstValueFrom(this.shiftService.createShift(shiftData));
+      console.log('Shift creation response:', response);
       
       const toast = await this.toastController.create({
         message: 'Shift created successfully',
         duration: 2000,
         color: 'success'
       });
-      toast.present();
+      await toast.present();
       
-      // Navigate back to shifts list
       this.router.navigate(['/business-owner/shifts']);
     } catch (error: any) {
       console.error('Error creating shift:', error);
+      let errorMessage = 'Failed to create shift';
+      
+      if (error.error?.errors) {
+        errorMessage = error.error.errors.join(', ');
+      } else if (error.error?.error) {
+        errorMessage = error.error.error;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
       const toast = await this.toastController.create({
-        message: error.message || 'Failed to create shift',
-        duration: 2000,
-        color: 'danger'
+        message: errorMessage,
+        duration: 3000,
+        color: 'danger',
+        position: 'bottom'
       });
-      toast.present();
+      await toast.present();
+    } finally {
+      this.isSubmitting = false;
     }
   }
 } 

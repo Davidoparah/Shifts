@@ -126,7 +126,7 @@ module Api
           location_coordinates: []
         ).tap do |whitelisted|
           whitelisted[:business_profile_id] = current_user.business.id
-          whitelisted[:business_name] = current_user.business.business_name
+          whitelisted[:business_name] = current_user.business.name
         end
       end
 

@@ -1,6 +1,5 @@
 export enum ShiftStatus {
-  DRAFT = 'draft',
-  PUBLISHED = 'published',
+  AVAILABLE = 'available',
   ASSIGNED = 'assigned',
   IN_PROGRESS = 'in_progress',
   COMPLETED = 'completed',
