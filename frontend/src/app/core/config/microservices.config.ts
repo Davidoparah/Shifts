@@ -19,8 +19,8 @@ export const microservicesConfig = {
   shift: {
     baseUrl: `${environment.apiUrl}/shifts`,
     endpoints: {
-      list: '',
-      create: '',
+      list: '/',
+      create: '/',
       update: '/:id',
       delete: '/:id',
       available: '/available',

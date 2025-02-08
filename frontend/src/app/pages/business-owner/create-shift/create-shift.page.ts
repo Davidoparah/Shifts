@@ -61,18 +61,27 @@ import { Shift } from '../../../models/shift.model';
           <ion-label position="floating">Hourly Rate ($)</ion-label>
           <ion-input
             type="number"
-            formControlName="rate"
+            formControlName="hourly_rate"
             min="0"
             step="0.01"
           ></ion-input>
         </ion-item>
 
         <ion-item>
-          <ion-label position="floating">Location</ion-label>
+          <ion-label position="floating">Location Name</ion-label>
           <ion-input
             type="text"
-            formControlName="location"
-            placeholder="Enter address"
+            formControlName="location_name"
+            placeholder="Enter location name"
+          ></ion-input>
+        </ion-item>
+
+        <ion-item>
+          <ion-label position="floating">Location Address</ion-label>
+          <ion-input
+            type="text"
+            formControlName="location_address"
+            placeholder="Enter full address"
           ></ion-input>
         </ion-item>
 
@@ -94,7 +103,7 @@ import { Shift } from '../../../models/shift.model';
         </ion-item>
 
         <ion-item>
-          <ion-label position="floating">Requirements</ion-label>
+          <ion-label position="floating">Requirements (one per line)</ion-label>
           <ion-textarea
             formControlName="requirements"
             placeholder="Enter shift requirements"
@@ -133,80 +142,62 @@ export class CreateShiftPage implements OnInit {
   ) {
     this.shiftForm = this.fb.group({
       title: ['', Validators.required],
-      start_time: [new Date(Date.now() + 3600000).toISOString(), Validators.required], // 1 hour from now
-      end_time: [new Date(Date.now() + 7200000).toISOString(), Validators.required], // 2 hours from now
-      rate: ['', [Validators.required, Validators.min(0)]],
-      location: ['', Validators.required],
+      start_time: [new Date(Date.now() + 3600000).toISOString(), Validators.required],
+      end_time: [new Date(Date.now() + 7200000).toISOString(), Validators.required],
+      hourly_rate: ['', [Validators.required, Validators.min(0)]],
+      location_name: ['', Validators.required],
+      location_address: ['', Validators.required],
       dress_code: [''],
       notes: [''],
-      requirements: [[]]
+      requirements: ['']
     });
   }
 
   ngOnInit() {}
 
   async onSubmit() {
-    if (this.shiftForm.valid) {
-      try {
-        this.isLoading = true;
+    if (this.shiftForm.invalid) {
+      return;
+    }
 
-        // Get form values
-        const formValues = this.shiftForm.value;
+    this.isLoading = true;
 
-        // Ensure dates are valid ISO strings
-        const startTime = new Date(formValues.start_time);
-        const endTime = new Date(formValues.end_time);
+    try {
+      const formData = this.shiftForm.value;
+      
+      // Convert requirements from text to array if present
+      const requirements = formData.requirements
+        ? formData.requirements.split('\n').filter((r: string) => r.trim())
+        : [];
 
-        if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
-          throw new Error('Invalid date format');
-        }
+      const shiftData = {
+        ...formData,
+        requirements,
+        // Generate a temporary location_id if needed
+        location_id: `temp_${Date.now()}`
+      };
 
-        // Convert requirements string to array if it's a string
-        const requirements = formValues.requirements ? 
-          (typeof formValues.requirements === 'string' ? 
-            formValues.requirements.split(',').map((r: string) => r.trim()).filter(Boolean) : 
-            formValues.requirements) : 
-          [];
-
-        // Convert rate to number
-        const rate = parseFloat(formValues.rate);
-        if (isNaN(rate) || rate <= 0) {
-          throw new Error('Rate must be a positive number');
-        }
-
-        const shiftData = {
-          title: formValues.title,
-          start_time: startTime.toISOString(),
-          end_time: endTime.toISOString(),
-          rate: rate,
-          location: formValues.location,
-          dress_code: formValues.dress_code || '',
-          notes: formValues.notes || '',
-          requirements: requirements
-        };
-
-        await this.shiftService.createShift(shiftData).toPromise();
-        
-        const toast = await this.toastCtrl.create({
-          message: 'Shift created successfully',
-          duration: 2000,
-          color: 'success'
-        });
-        await toast.present();
-        
-        this.router.navigate(['/business-owner']);
-      } catch (error: any) {
-        console.error('Error creating shift:', error);
-        const errorMessage = error.message || 'Failed to create shift';
-        const toast = await this.toastCtrl.create({
-          message: errorMessage,
-          duration: 3000,
-          color: 'danger'
-        });
-        await toast.present();
-      } finally {
-        this.isLoading = false;
-      }
+      await this.shiftService.createShift(shiftData).toPromise();
+      
+      const toast = await this.toastCtrl.create({
+        message: 'Shift created successfully',
+        duration: 2000,
+        color: 'success'
+      });
+      await toast.present();
+      
+      this.router.navigate(['/business-owner']);
+    } catch (error: any) {
+      console.error('Error creating shift:', error);
+      const errorMessage = error.message || 'Failed to create shift';
+      const toast = await this.toastCtrl.create({
+        message: errorMessage,
+        duration: 3000,
+        color: 'danger'
+      });
+      await toast.present();
+    } finally {
+      this.isLoading = false;
     }
   }
 } 
