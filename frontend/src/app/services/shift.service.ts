@@ -62,10 +62,12 @@ export class ShiftService extends BaseHttpService {
     page?: number;
     per_page?: number;
     status?: ShiftStatus;
+    filter?: 'upcoming' | 'completed' | 'in_progress' | 'available';
     start_date?: string;
     end_date?: string;
   }): Observable<PaginatedResponse<Shift>> {
-    return this.get<PaginatedResponse<Shift>>(this.endpoints['worker-shifts'], params);
+    const { filter, ...otherParams } = params || {};
+    return this.get<PaginatedResponse<Shift>>(this.endpoints['list'], { ...otherParams, filter });
   }
 
   completeShift(id: string, data: { notes?: string } = {}): Observable<Shift> {

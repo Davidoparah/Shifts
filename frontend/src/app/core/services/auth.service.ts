@@ -104,6 +104,13 @@ export class AuthService {
   private handleAuthentication(response: AuthResponse) {
     localStorage.setItem(this.tokenKey, response.token);
     this.currentUserSubject.next(response.user);
+    
+    // If user is a worker, ensure they have a profile
+    if (response.user.role === 'worker') {
+      this.ensureWorkerProfile().subscribe({
+        error: (error) => console.error('Error ensuring worker profile:', error)
+      });
+    }
   }
 
   private handleError(error: HttpErrorResponse) {
@@ -125,6 +132,11 @@ export class AuthService {
 
   resetPassword(token: string, password: string): Observable<any> {
     return this.http.post(`${environment.apiUrl}/auth/reset-password`, { token, password })
+      .pipe(catchError(this.handleError));
+  }
+
+  ensureWorkerProfile(): Observable<any> {
+    return this.http.post(`${environment.apiUrl}/auth/ensure-worker-profile`, {})
       .pipe(catchError(this.handleError));
   }
 } 

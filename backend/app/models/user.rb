@@ -57,7 +57,8 @@ class User
   scope :inactive, -> { where(status: 'inactive') }
   scope :suspended, -> { where(status: 'suspended') }
 
-  def name
+  # Methods
+  def full_name
     "#{first_name} #{last_name}".strip
   end
 

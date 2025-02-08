@@ -22,6 +22,9 @@ import { PaginatedResponse } from '../../../models/common.model';
           <ion-segment-button value="upcoming">
             <ion-label>Upcoming</ion-label>
           </ion-segment-button>
+          <ion-segment-button value="in_progress">
+            <ion-label>In Progress</ion-label>
+          </ion-segment-button>
           <ion-segment-button value="completed">
             <ion-label>Completed</ion-label>
           </ion-segment-button>
@@ -40,8 +43,8 @@ import { PaginatedResponse } from '../../../models/common.model';
             <ion-label>
               <h2>{{ shift.title }}</h2>
               <h3>{{ shift.start_time | date:'medium' }}</h3>
-              <p>{{ shift.location }}</p>
-              <p>Rate: {{ shift.rate | currency }}/hr</p>
+              <p>{{ shift.location?.name || shift.location }}</p>
+              <p>Rate: {{ shift.hourly_rate || shift.rate | currency }}/hr</p>
             </ion-label>
             <ion-badge slot="end" [color]="getStatusColor(shift.status)">
               {{ shift.status }}
@@ -58,7 +61,7 @@ import { PaginatedResponse } from '../../../models/common.model';
           </ion-item-options>
         </ion-item-sliding>
 
-        <ion-item *ngIf="filteredShifts.length === 0">
+        <ion-item *ngIf="filteredShifts.length === 0 && !loading">
           <ion-label class="ion-text-center">
             <p>No shifts found</p>
           </ion-label>
@@ -89,7 +92,7 @@ import { PaginatedResponse } from '../../../models/common.model';
 export class MyShiftsPage implements OnInit {
   shifts: Shift[] = [];
   filteredShifts: Shift[] = [];
-  selectedSegment = 'upcoming';
+  selectedSegment: 'upcoming' | 'completed' | 'in_progress' = 'upcoming';
   loading = true;
   currentPage = 1;
   perPage = 10;
@@ -107,36 +110,32 @@ export class MyShiftsPage implements OnInit {
     this.loading = true;
     this.shiftService.getWorkerShifts({
       page: this.currentPage,
-      per_page: this.perPage
+      per_page: this.perPage,
+      filter: this.selectedSegment
     }).subscribe({
       next: (response: PaginatedResponse<Shift>) => {
-        this.shifts = [...response.data].sort((a: Shift, b: Shift) =>
-          new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
-        );
+        if (response && response.data) {
+          this.shifts = response.data;
+          this.filteredShifts = this.shifts.sort((a, b) =>
+            new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
+          );
+        } else {
+          this.shifts = [];
+          this.filteredShifts = [];
+        }
         this.loading = false;
       },
       error: (error: Error) => {
         console.error('Error loading shifts:', error);
+        this.shifts = [];
+        this.filteredShifts = [];
         this.loading = false;
       }
     });
   }
 
-  filterShifts() {
-    const now = new Date();
-    if (this.selectedSegment === 'upcoming') {
-      this.filteredShifts = this.shifts.filter(shift => 
-        new Date(shift.start_time) > now && shift.status !== 'completed'
-      );
-    } else {
-      this.filteredShifts = this.shifts.filter(shift => 
-        shift.status === 'completed'
-      );
-    }
-  }
-
   segmentChanged() {
-    this.filterShifts();
+    this.loadShifts();
   }
 
   canStartShift(shift: Shift): boolean {
@@ -198,16 +197,25 @@ export class MyShiftsPage implements OnInit {
     this.currentPage = 1;
     this.shiftService.getWorkerShifts({
       page: this.currentPage,
-      per_page: this.perPage
+      per_page: this.perPage,
+      filter: this.selectedSegment
     }).subscribe({
       next: (response: PaginatedResponse<Shift>) => {
-        this.shifts = [...response.data].sort((a: Shift, b: Shift) =>
-          new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
-        );
+        if (response && response.data) {
+          this.shifts = response.data;
+          this.filteredShifts = this.shifts.sort((a, b) =>
+            new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
+          );
+        } else {
+          this.shifts = [];
+          this.filteredShifts = [];
+        }
         event.target.complete();
       },
       error: (error: Error) => {
         console.error('Error refreshing shifts:', error);
+        this.shifts = [];
+        this.filteredShifts = [];
         event.target.complete();
       }
     });
@@ -215,9 +223,10 @@ export class MyShiftsPage implements OnInit {
 
   getStatusColor(status: string): string {
     switch (status) {
-      case 'assigned': return 'warning';
+      case 'assigned': return 'primary';
       case 'in_progress': return 'tertiary';
       case 'completed': return 'success';
+      case 'cancelled': return 'danger';
       default: return 'medium';
     }
   }

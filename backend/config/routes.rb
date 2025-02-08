@@ -10,6 +10,7 @@ Rails.application.routes.draw do
         post 'reset-password', to: 'auth#reset_password'
         get 'me', to: 'auth#me'
         delete 'logout', to: 'auth#logout'
+        post 'ensure-worker-profile', to: 'auth#ensure_worker_profile'
       end
 
       # Worker profile routes

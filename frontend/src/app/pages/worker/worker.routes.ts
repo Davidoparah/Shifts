@@ -30,6 +30,10 @@ export const routes: Routes = [
         path: 'incidents',
         loadChildren: () => import('./incidents/incidents.routes').then(m => m.routes)
       },
+      {
+        path: 'profile',
+        loadChildren: () => import('./profile/profile.routes').then(m => m.routes)
+      },
       // Temporarily comment out routes until components are implemented
       /*
       {

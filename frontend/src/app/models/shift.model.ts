@@ -1,10 +1,4 @@
-export enum ShiftStatus {
-  AVAILABLE = 'available',
-  ASSIGNED = 'assigned',
-  IN_PROGRESS = 'in_progress',
-  COMPLETED = 'completed',
-  CANCELLED = 'cancelled'
-}
+export type ShiftStatus = 'available' | 'assigned' | 'in_progress' | 'completed' | 'cancelled';
 
 export interface Location {
   id: string;

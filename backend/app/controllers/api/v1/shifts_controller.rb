@@ -53,7 +53,8 @@ module Api
           @shift.update(
             status: 'assigned',
             worker_profile_id: current_user.worker_profile.id,
-            worker_name: current_user.full_name
+            worker_name: current_user.full_name,
+            worker: current_user
           )
           render json: ShiftSerializer.new(@shift).as_json
         else
@@ -122,6 +123,7 @@ module Api
           :notes,
           :location_name,
           :location_address,
+          :status, 
           requirements: [],
           location_coordinates: []
         ).tap do |whitelisted|
@@ -144,13 +146,42 @@ module Api
 
       def apply_filters(scope)
         scope = scope.where(status: params[:status]) if params[:status].present?
-        scope = scope.where(:start_time.gte => Time.parse(params[:start_date])) if params[:start_date].present?
-        scope = scope.where(:end_time.lte => Time.parse(params[:end_date])) if params[:end_date].present?
+        scope = scope.where(business_profile_id: params[:business_id]) if params[:business_id].present?
         
-        if params[:location_coordinates].present? && params[:distance].present?
-          coordinates = params[:location_coordinates].map(&:to_f)
-          distance = params[:distance].to_i
-          scope = scope.geo_near(coordinates).max_distance(distance * 1609.34) # Convert miles to meters
+        if current_user.worker?
+          case params[:filter]
+          when 'upcoming'
+            scope = scope.where(
+              worker_profile_id: current_user.worker_profile.id,
+              status: 'assigned',
+              start_time: { :$gt => Time.current }
+            )
+          when 'completed'
+            scope = scope.where(
+              worker_profile_id: current_user.worker_profile.id,
+              status: 'completed'
+            )
+          when 'in_progress'
+            scope = scope.where(
+              worker_profile_id: current_user.worker_profile.id,
+              status: 'in_progress'
+            )
+          when 'available'
+            scope = scope.where(
+              status: 'available',
+              start_time: { :$gt => Time.current }
+            )
+          else
+            scope = scope.where(worker_profile_id: current_user.worker_profile.id) unless params[:status] == 'available'
+          end
+        end
+
+        if params[:start_date].present?
+          scope = scope.where(:start_time.gte => params[:start_date].to_datetime.beginning_of_day)
+        end
+        
+        if params[:end_date].present?
+          scope = scope.where(:end_time.lte => params[:end_date].to_datetime.end_of_day)
         end
 
         scope

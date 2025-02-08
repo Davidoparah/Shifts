@@ -64,42 +64,30 @@ module Api
 
       def register
         begin
-          # Extract user data from nested params
-          raw_data = params[:auth] || params
-          
-          # Process the name field
-          if raw_data[:name].present?
-            name_parts = raw_data[:name].to_s.strip.split(' ', 2)
-            raw_data = raw_data.to_unsafe_h.merge(
-              first_name: name_parts[0],
-              last_name: name_parts[1] || name_parts[0]
-            )
+          user = nil
+          User.transaction do
+            user = User.new(user_params(params[:auth]))
+            if user.save
+              # Create worker profile automatically for worker accounts
+              if user.worker?
+                user.create_worker_profile!(
+                  status: 'available',
+                  hourly_rate: params[:auth][:hourly_rate] || 0
+                )
+              end
+              
+              token = jwt_encode({ user_id: user.id })
+              render json: {
+                token: token,
+                user: UserSerializer.new(user).as_json
+              }, status: :created
+            else
+              render json: { errors: user.errors.full_messages }, status: :unprocessable_entity
+            end
           end
-          
-          # Create business first if user is a business owner
-          business = create_business_for_owner(raw_data) if business_owner?(raw_data)
-          
-          # Create user with processed parameters
-          user = create_user(raw_data, business)
-          
-          if user.persisted?
-            token = jwt_encode(user_id: user.id.to_s)
-            UserMailer.welcome_email(user).deliver_later if defined?(UserMailer)
-            
-            render json: { 
-              token: token, 
-              user: UserSerializer.new(user).as_json
-            }, status: :created
-          else
-            cleanup_failed_registration(business)
-            render_error('Registration failed', :unprocessable_entity, 'registration_failed', user.errors)
-          end
-        rescue ActionController::ParameterMissing => e
-          render_error('Invalid parameters', :unprocessable_entity, 'invalid_parameters')
-        rescue => e
-          cleanup_failed_registration(business) if defined?(business)
-          log_error('Registration error', e)
-          render_error('An error occurred during registration', :internal_server_error, 'registration_error')
+        rescue StandardError => e
+          log_error("User registration failed", e)
+          render json: { error: 'Registration failed' }, status: :internal_server_error
         end
       end
 
@@ -141,6 +129,23 @@ module Api
 
       def me
         render json: { user: UserSerializer.new(current_user).as_json }
+      end
+
+      def ensure_worker_profile
+        begin
+          if current_user&.worker? && !current_user.worker_profile
+            profile = current_user.create_worker_profile!(
+              status: 'available',
+              hourly_rate: 0
+            )
+            render json: { message: 'Worker profile created successfully', profile: profile }, status: :created
+          else
+            render json: { message: 'Worker profile already exists or user is not a worker' }, status: :ok
+          end
+        rescue StandardError => e
+          log_error("Worker profile creation failed", e)
+          render json: { error: 'Failed to create worker profile' }, status: :internal_server_error
+        end
       end
 
       private

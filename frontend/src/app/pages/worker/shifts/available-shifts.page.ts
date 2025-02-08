@@ -173,14 +173,20 @@ export class AvailableShiftsPage implements OnInit {
   }
 
   async applyToShift(shift: Shift) {
-    if (!this.currentUserId) {
+    if (!this.authService.isAuthenticated()) {
       await this.presentToast('Please log in to apply for shifts', 'warning');
+      return;
+    }
+
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser) {
+      await this.presentToast('Unable to verify user information', 'warning');
       return;
     }
 
     try {
       const application: ShiftApplication = {
-        worker_id: this.currentUserId,
+        worker_id: currentUser.id,
         availability_confirmed: true
       };
       await this.shiftService.applyToShift(shift.id, application).toPromise();
