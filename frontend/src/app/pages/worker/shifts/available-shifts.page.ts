@@ -34,22 +34,15 @@ import { ShiftApplication } from '../../../models/shift-application.model';
           <ion-item>
             <ion-label>
               <h2>{{ shift.title }}</h2>
-              <h3>{{ shift.business?.name }}</h3>
-              <p>
-                <ion-icon name="calendar-outline"></ion-icon>
-                {{ shift.start_time | date:'mediumDate' }}
-              </p>
-              <p>
-                <ion-icon name="time-outline"></ion-icon>
-                {{ shift.start_time | date:'shortTime' }} - {{ shift.end_time | date:'shortTime' }}
-              </p>
+              <h3>{{ shift.business_name }}</h3>
+              <p>{{ shift.start_time | date:'medium' }} - {{ shift.end_time | date:'medium' }}</p>
               <p>
                 <ion-icon name="location-outline"></ion-icon>
-                {{ shift.location }}
+                {{ shift.location_name ? shift.location_name + ' - ' : '' }}{{ shift.location_address || 'No location set' }}
               </p>
               <p>
                 <ion-icon name="cash-outline"></ion-icon>
-                {{ shift.rate | currency }}/hr
+                {{ shift.hourly_rate | currency }}/hr
               </p>
               <ion-note *ngIf="shift.requirements && shift.requirements.length > 0">
                 <ion-icon name="list-outline"></ion-icon>

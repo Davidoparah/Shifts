@@ -2,8 +2,8 @@ module Api
   module V1
     class ShiftsController < BaseController
       before_action :authenticate_user!
-      before_action :set_shift, only: [:show, :update, :apply, :start, :complete, :cancel]
-      before_action :ensure_can_manage!, only: [:update, :cancel]
+      before_action :set_shift, only: [:show, :update, :apply, :start, :complete, :cancel, :destroy]
+      before_action :ensure_can_manage!, only: [:update, :cancel, :destroy]
       before_action :ensure_can_work!, only: [:apply, :start, :complete]
       before_action :set_business, only: [:create]
 
@@ -93,6 +93,14 @@ module Api
           render json: ShiftSerializer.new(@shift).as_json
         else
           render json: { error: 'Cannot cancel this shift' }, status: :unprocessable_entity
+        end
+      end
+
+      def destroy
+        if @shift.destroy
+          head :no_content
+        else
+          render json: { error: 'Failed to delete shift' }, status: :unprocessable_entity
         end
       end
 

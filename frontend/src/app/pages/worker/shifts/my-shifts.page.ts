@@ -43,8 +43,14 @@ import { PaginatedResponse } from '../../../models/common.model';
             <ion-label>
               <h2>{{ shift.title }}</h2>
               <h3>{{ shift.start_time | date:'medium' }}</h3>
-              <p>{{ shift.location?.name || shift.location }}</p>
-              <p>Rate: {{ shift.hourly_rate || shift.rate | currency }}/hr</p>
+              <p>
+                <ion-icon name="location-outline"></ion-icon>
+                {{ shift.location_name ? shift.location_name + ' - ' : '' }}{{ shift.location_address || 'No location set' }}
+              </p>
+              <p>
+                <ion-icon name="cash-outline"></ion-icon>
+                {{ shift.hourly_rate | currency }}/hr
+              </p>
             </ion-label>
             <ion-badge slot="end" [color]="getStatusColor(shift.status)">
               {{ shift.status }}

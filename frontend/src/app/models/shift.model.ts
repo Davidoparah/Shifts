@@ -44,9 +44,20 @@ export interface Shift {
   requirements?: string[];
   notes?: string;
   
-  // Relations
-  business: Business;
-  location: Location;
+  // Location details
+  location_name: string;
+  location_address: string;
+  location_coordinates?: number[];
+  location?: Location; // Making this optional since we're using direct fields
+  
+  // Business details
+  business_profile_id: string;
+  business_name: string;
+  business?: Business;
+  
+  // Worker details
+  worker_profile_id?: string;
+  worker_name?: string;
   worker?: Worker;
   
   // Application details
@@ -55,8 +66,9 @@ export interface Shift {
   selected_worker_id?: string;
   
   // Progress tracking
-  start_time_actual?: string;
-  end_time_actual?: string;
+  check_in_time?: string;
+  check_out_time?: string;
+  actual_hours_worked?: number;
   break_duration_minutes?: number;
   total_earnings?: number;
   

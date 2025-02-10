@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { IonicModule, ToastController } from '@ionic/angular';
+import { IonicModule, ToastController, AlertController } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { ShiftService } from '../../../services/shift.service';
@@ -62,14 +62,15 @@ import { Shift } from '../../../models/shift.model';
         <ion-item>
           <ion-label>
             <h2>Location</h2>
-            <p>{{ shift?.location }}</p>
+            <p>{{ shift?.location_name || 'No location name set' }}</p>
+            <p>{{ shift?.location_address || 'No location address set' }}</p>
           </ion-label>
         </ion-item>
 
         <ion-item>
           <ion-label>
             <h2>Rate</h2>
-            <p>{{ shift?.rate | currency }}/hr</p>
+            <p>{{ shift?.hourly_rate | currency }}/hr</p>
           </ion-label>
         </ion-item>
 
@@ -144,7 +145,8 @@ export class ShiftDetailsPage implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private shiftService: ShiftService,
-    private toastCtrl: ToastController
+    private toastCtrl: ToastController,
+    private alertController: AlertController
   ) {}
 
   ngOnInit() {
@@ -194,26 +196,43 @@ export class ShiftDetailsPage implements OnInit {
   }
 
   async deleteShift() {
-    if (!this.shift) return;
-
-    try {
-      await this.shiftService.deleteShift(this.shift.id).toPromise();
-      const toast = await this.toastCtrl.create({
-        message: 'Shift deleted successfully',
-        duration: 2000,
-        color: 'success'
-      });
-      await toast.present();
-      this.router.navigate(['/business-owner/shifts']);
-    } catch (error: any) {
-      console.error('Error deleting shift:', error);
-      const toast = await this.toastCtrl.create({
-        message: error.message || 'Failed to delete shift',
-        duration: 3000,
-        color: 'danger'
-      });
-      await toast.present();
-    }
+    const alert = await this.alertController.create({
+      header: 'Confirm Delete',
+      message: 'Are you sure you want to delete this shift?',
+      buttons: [
+        {
+          text: 'Cancel',
+          role: 'cancel'
+        },
+        {
+          text: 'Delete',
+          role: 'destructive',
+          handler: async () => {
+            try {
+              if (this.shift?.id) {
+                await this.shiftService.deleteShift(this.shift.id).toPromise();
+                const toast = await this.toastCtrl.create({
+                  message: 'Shift deleted successfully',
+                  duration: 2000,
+                  color: 'success'
+                });
+                toast.present();
+                this.router.navigate(['/business-owner/shifts']);
+              }
+            } catch (error) {
+              console.error('Error deleting shift:', error);
+              const toast = await this.toastCtrl.create({
+                message: 'Failed to delete shift',
+                duration: 3000,
+                color: 'danger'
+              });
+              toast.present();
+            }
+          }
+        }
+      ]
+    });
+    await alert.present();
   }
 
   getStatusColor(status: string): string {

@@ -34,8 +34,14 @@ import { ToastController } from '@ionic/angular';
             <ion-label>
               <h2>{{ shift.title }}</h2>
               <h3>{{ shift.start_time | date:'medium' }}</h3>
-              <p>{{ shift.location }}</p>
-              <p>Rate: {{ shift.rate | currency }}/hr</p>
+              <p>
+                <ion-icon name="location-outline"></ion-icon>
+                {{ shift.location_name ? shift.location_name + ' - ' : '' }}{{ shift.location_address || 'No location set' }}
+              </p>
+              <p>
+                <ion-icon name="cash-outline"></ion-icon>
+                {{ shift.hourly_rate | currency }}/hr
+              </p>
             </ion-label>
             <ion-badge slot="end" [color]="getStatusColor(shift.status)">
               {{ shift.status }}
@@ -101,29 +107,49 @@ export class ShiftsListPage implements OnInit {
   }
 
   async handleRefresh(event: any) {
-    this.currentPage = 1;
-    this.shifts = [];
-    this.error = null;
-    await this.loadShifts();
-    event.target.complete();
+    try {
+      this.currentPage = 1;
+      this.shifts = [];
+      this.error = null;
+      this.isLoading = true;
+      
+      const response = await this.shiftService.getShifts({ 
+        page: this.currentPage, 
+        per_page: 10 
+      }).toPromise();
+      
+      if (response) {
+        this.shifts = response.data;
+        this.totalPages = response.meta.total_pages;
+      }
+    } catch (error: any) {
+      console.error('Error refreshing shifts:', error);
+      const toast = await this.toastController.create({
+        message: error.error?.error || error.message || 'Failed to refresh shifts',
+        duration: 3000,
+        position: 'bottom',
+        color: 'danger'
+      });
+      toast.present();
+    } finally {
+      this.isLoading = false;
+      event.target.complete();
+    }
   }
 
   loadShifts() {
     if (this.isLoading) return;
     this.isLoading = true;
     this.error = null;
-    console.log('Loading shifts for page:', this.currentPage);
 
     this.shiftService.getShifts({ page: this.currentPage, per_page: 10 }).subscribe({
       next: (response) => {
-        console.log('Received shifts response:', response);
         if (this.currentPage === 1) {
           this.shifts = response.data;
         } else {
           this.shifts = [...this.shifts, ...response.data];
         }
         this.totalPages = response.meta.total_pages;
-        console.log('Updated shifts array:', this.shifts);
         this.isLoading = false;
       },
       error: async (error) => {
