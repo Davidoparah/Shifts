@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { WorkerPage } from './worker.page';
 import { AvailableShiftsPage } from './shifts/available-shifts.page';
 import { MyShiftsPage } from './shifts/my-shifts.page';
+import { ShiftDetailsPage } from './shifts/shift-details.page';
 import { EarningsPage } from './earnings/earnings.page';
 
 export const routes: Routes = [
@@ -21,6 +22,10 @@ export const routes: Routes = [
       {
         path: 'my-shifts',
         component: MyShiftsPage
+      },
+      {
+        path: 'shifts/details/:id',
+        component: ShiftDetailsPage
       },
       {
         path: 'earnings',

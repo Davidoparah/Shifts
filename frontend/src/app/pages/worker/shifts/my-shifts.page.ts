@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { IonicModule, ToastController } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ShiftService } from '../../../services/shift.service';
 import { Shift, ShiftStatus } from '../../../models/shift.model';
@@ -40,7 +40,7 @@ import { PaginatedResponse } from '../../../models/common.model';
       <ion-list>
         <ion-item-sliding *ngFor="let shift of filteredShifts">
           <ion-item>
-            <ion-label>
+            <ion-label (click)="viewShiftDetails(shift.id)" style="cursor: pointer">
               <h2>{{ shift.title }}</h2>
               <h3>{{ shift.start_time | date:'medium' }}</h3>
               <p>
@@ -105,7 +105,8 @@ export class MyShiftsPage implements OnInit {
 
   constructor(
     private shiftService: ShiftService,
-    private toastCtrl: ToastController
+    private toastCtrl: ToastController,
+    private router: Router
   ) {}
 
   ngOnInit() {
@@ -145,10 +146,18 @@ export class MyShiftsPage implements OnInit {
   }
 
   canStartShift(shift: Shift): boolean {
+    if (!shift) return false;
+    
     const now = new Date();
-    const shiftStart = new Date(shift.start_time);
-    const timeDiff = Math.abs(now.getTime() - shiftStart.getTime()) / (1000 * 60); // difference in minutes
-    return shift.status === 'assigned' && timeDiff <= 15; // Can start within 15 minutes of shift start
+    const startTime = new Date(shift.start_time);
+    const endTime = new Date(shift.end_time);
+    const fifteenMinutesBefore = new Date(startTime.getTime() - 15 * 60000);
+    
+    return (
+      shift.status === 'assigned' &&
+      now >= fifteenMinutesBefore &&
+      now <= endTime
+    );
   }
 
   canCompleteShift(shift: Shift): boolean {
@@ -235,5 +244,9 @@ export class MyShiftsPage implements OnInit {
       case 'cancelled': return 'danger';
       default: return 'medium';
     }
+  }
+
+  viewShiftDetails(shiftId: string) {
+    this.router.navigate(['/worker/shifts/details', shiftId]);
   }
 } 
