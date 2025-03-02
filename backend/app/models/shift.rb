@@ -144,6 +144,23 @@ class Shift
     )
   end
 
+  def unassign_worker
+    return false if %w[completed cancelled in_progress].include?(status)
+    return false if start_time <= Time.current
+    
+    # Remove worker assignment and reset status to available
+    update(
+      status: 'available',
+      worker_profile_id: nil,
+      worker_name: nil,
+      applications: applications.map { |app| app.merge('status' => 'cancelled') }
+    )
+    
+    Rails.logger.info("Worker unassigned from shift #{id}")
+    Rails.logger.info("Shift status updated to: #{status}")
+    true
+  end
+
   def add_application(worker)
     application = {
       worker_profile_id: worker.worker_profile.id,

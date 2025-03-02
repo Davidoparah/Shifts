@@ -30,6 +30,7 @@ Rails.application.routes.draw do
           post 'cancel'
           post 'start'
           post 'complete'
+          post 'unassign'
         end
       end
 

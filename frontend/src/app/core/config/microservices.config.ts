@@ -20,19 +20,20 @@ export const microservicesConfig = {
     }
   },
   shift: {
-    baseUrl: `${environment.apiUrl}${apiPrefix}/shifts`,
+    baseUrl: `${environment.apiUrl}${apiPrefix}`,
     endpoints: {
-      list: '/',
-      create: '/',
-      update: '/:id',
-      delete: '/:id',
-      available: '/available',
-      apply: '/:id/apply',
-      applications: '/:id/applications',
-      start: '/:id/start',
-      complete: '/:id/complete',
-      cancel: '/:id/cancel',
-      'worker-shifts': '/'
+      list: '/shifts',
+      create: '/shifts',
+      update: '/shifts/:id',
+      delete: '/shifts/:id',
+      available: '/shifts/available',
+      apply: '/shifts/:id/apply',
+      applications: '/shifts/:id/applications',
+      start: '/shifts/:id/start',
+      complete: '/shifts/:id/complete',
+      cancel: '/shifts/:id/cancel',
+      unassign: '/shifts/:id/unassign',
+      'worker-shifts': '/shifts'
     }
   },
   worker: {

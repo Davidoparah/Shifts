@@ -2,9 +2,9 @@ module Api
   module V1
     class ShiftsController < BaseController
       before_action :authenticate_user!
-      before_action :set_shift, only: [:show, :update, :apply, :start, :complete, :cancel, :destroy]
+      before_action :set_shift, only: [:show, :update, :apply, :start, :complete, :cancel, :destroy, :unassign]
       before_action :ensure_can_manage!, only: [:update, :cancel, :destroy]
-      before_action :ensure_can_work!, only: [:apply, :start, :complete]
+      before_action :ensure_can_work!, only: [:apply, :start, :complete, :unassign]
       before_action :set_business, only: [:create]
 
       def index
@@ -103,6 +103,50 @@ module Api
         else
           render json: { error: 'Failed to delete shift' }, status: :unprocessable_entity
         end
+      end
+
+      def unassign
+        Rails.logger.info("Unassign attempt for shift #{@shift.id}")
+        Rails.logger.info("Current user worker profile ID: #{current_user.worker_profile.id.to_s}")
+        Rails.logger.info("Shift worker profile ID: #{@shift.worker_profile_id.to_s}")
+        Rails.logger.info("Shift status: #{@shift.status}")
+        Rails.logger.info("Shift start time: #{@shift.start_time}")
+        Rails.logger.info("Current time: #{Time.current}")
+        Rails.logger.info("ID comparison: #{@shift.worker_profile_id.to_s == current_user.worker_profile.id.to_s}")
+
+        # Convert both IDs to strings for comparison
+        if @shift.worker_profile_id.to_s != current_user.worker_profile.id.to_s
+          Rails.logger.error("Worker profile ID mismatch:")
+          Rails.logger.error("Shift worker_profile_id: #{@shift.worker_profile_id.inspect}")
+          Rails.logger.error("Current user worker_profile.id: #{current_user.worker_profile.id.inspect}")
+          render json: { error: 'You are not assigned to this shift' }, status: :unprocessable_entity
+          return
+        end
+
+        if @shift.status != 'assigned'
+          render json: { error: "Cannot unassign shift with status: #{@shift.status}" }, status: :unprocessable_entity
+          return
+        end
+
+        if @shift.start_time <= Time.current
+          render json: { error: 'Cannot unassign a shift that has already started' }, status: :unprocessable_entity
+          return
+        end
+
+        if @shift.unassign_worker
+          render json: ShiftSerializer.new(@shift).as_json
+        else
+          error_message = if @shift.start_time <= Time.current
+            'Cannot unassign a shift that has already started'
+          else
+            'Failed to unassign from shift'
+          end
+          render json: { error: error_message }, status: :unprocessable_entity
+        end
+      rescue StandardError => e
+        Rails.logger.error("Error in unassign: #{e.message}")
+        Rails.logger.error(e.backtrace.join("\n"))
+        render json: { error: 'Error unassigning from shift' }, status: :internal_server_error
       end
 
       private

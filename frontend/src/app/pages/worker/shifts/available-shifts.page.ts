@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { IonicModule, ToastController, AlertController } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
@@ -109,12 +109,13 @@ import { firstValueFrom } from 'rxjs';
   standalone: true,
   imports: [IonicModule, CommonModule, RouterModule]
 })
-export class AvailableShiftsPage implements OnInit {
+export class AvailableShiftsPage implements OnInit, OnDestroy {
   availableShifts: Shift[] = [];
   loading = true;
   currentPage = 1;
   perPage = 10;
   currentUserId: string | undefined;
+  private refreshListener: () => void;
 
   constructor(
     private shiftService: ShiftService,
@@ -126,10 +127,22 @@ export class AvailableShiftsPage implements OnInit {
   ) {
     const currentUser = this.authService.getCurrentUser();
     this.currentUserId = currentUser?.id;
+    
+    // Add refresh event listener
+    this.refreshListener = () => {
+      console.log('Refresh event received, reloading available shifts...');
+      this.loadShifts();
+    };
+    window.addEventListener('refresh-available-shifts', this.refreshListener);
   }
 
   ngOnInit() {
     this.loadShifts();
+  }
+
+  ngOnDestroy() {
+    // Remove the event listener when component is destroyed
+    window.removeEventListener('refresh-available-shifts', this.refreshListener);
   }
 
   loadShifts() {

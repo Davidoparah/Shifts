@@ -7,6 +7,7 @@ import { ShiftService } from '../../../services/shift.service';
 import { Shift, ShiftStatus, canStart, canComplete } from '../../../models/shift.model';
 import { PaginatedResponse } from '../../../models/common.model';
 import { AuthService } from '../../../core/services/auth.service';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-my-shifts',
@@ -40,6 +41,15 @@ import { AuthService } from '../../../core/services/auth.service';
 
       <ion-list>
         <ion-item-sliding *ngFor="let shift of filteredShifts">
+          <ion-item-options side="start">
+            <ion-item-option *ngIf="canUnassignShift(shift)" color="danger" (click)="unassignShift(shift)">
+              <div class="option-inner">
+                <ion-icon name="trash-outline" size="large"></ion-icon>
+                <div>Unassign</div>
+              </div>
+            </ion-item-option>
+          </ion-item-options>
+
           <ion-item>
             <ion-label (click)="viewShiftDetails(shift.id)">
               <h2>{{ shift.title }}</h2>
@@ -61,12 +71,16 @@ import { AuthService } from '../../../core/services/auth.service';
 
           <ion-item-options side="end">
             <ion-item-option *ngIf="canStartShift(shift)" color="primary" (click)="startShift(shift.id)">
-              <ion-icon slot="icon-only" name="play"></ion-icon>
-              Start
+              <div class="option-inner">
+                <ion-icon name="play" size="large"></ion-icon>
+                <div>Start</div>
+              </div>
             </ion-item-option>
             <ion-item-option *ngIf="canCompleteShift(shift)" color="success" (click)="completeShift(shift.id)">
-              <ion-icon slot="icon-only" name="checkmark"></ion-icon>
-              Complete
+              <div class="option-inner">
+                <ion-icon name="checkmark" size="large"></ion-icon>
+                <div>Complete</div>
+              </div>
             </ion-item-option>
           </ion-item-options>
         </ion-item-sliding>
@@ -95,6 +109,29 @@ import { AuthService } from '../../../core/services/auth.service';
       display: block;
       margin: 20px auto;
     }
+    ion-item-option {
+      --padding-start: 0;
+      --padding-end: 0;
+      --min-width: 90px;
+      height: 100%;
+    }
+    .option-inner {
+      width: 100%;
+      height: 100%;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .option-inner ion-icon {
+      font-size: 24px;
+    }
+    .option-inner div {
+      font-size: 14px;
+      white-space: nowrap;
+    }
   `],
   standalone: true,
   imports: [IonicModule, CommonModule, RouterModule, FormsModule]
@@ -115,11 +152,17 @@ export class MyShiftsPage implements OnInit {
     private authService: AuthService
   ) {
     const currentUser = this.authService.getCurrentUser();
-    this.currentUserId = currentUser?.id || null;
+    this.currentUserId = currentUser?.worker_profile?.id || null;
+    console.log('Initialized with worker profile ID:', this.currentUserId);
   }
 
   ngOnInit() {
     this.loadShifts();
+    // Subscribe to auth changes
+    this.authService.currentUser.subscribe(user => {
+      this.currentUserId = user?.worker_profile?.id || null;
+      console.log('Updated worker profile ID:', this.currentUserId);
+    });
   }
 
   loadShifts() {
@@ -143,9 +186,23 @@ export class MyShiftsPage implements OnInit {
             .filter(shift => {
               if (this.selectedSegment === 'upcoming') {
                 const now = new Date();
-                return (shift.status === 'assigned' || shift.status === 'in_progress') &&
-                       shift.worker_profile_id === workerProfileId &&
-                       new Date(shift.start_time) > now;
+                const isUpcoming = (
+                  // Include both assigned and in_progress shifts
+                  (shift.status === 'assigned' || shift.status === 'in_progress') &&
+                  // Must be assigned to current worker
+                  shift.worker_profile_id === workerProfileId &&
+                  // End time must be in the future
+                  new Date(shift.end_time) > now
+                );
+                console.log('Shift filtering:', {
+                  shiftId: shift.id,
+                  status: shift.status,
+                  workerId: shift.worker_profile_id,
+                  startTime: new Date(shift.start_time),
+                  endTime: new Date(shift.end_time),
+                  isUpcoming
+                });
+                return isUpcoming;
               }
               return shift.status === this.selectedSegment;
             })
@@ -184,6 +241,25 @@ export class MyShiftsPage implements OnInit {
     return shift.status === 'in_progress' &&
            shift.worker_profile_id === this.currentUserId &&
            new Date() >= new Date(shift.start_time);
+  }
+
+  canUnassignShift(shift: Shift): boolean {
+    if (!this.currentUserId) {
+      console.log('No worker profile ID found');
+      return false;
+    }
+    console.log('Checking can unassign:', {
+      shiftId: shift.id,
+      status: shift.status,
+      workerProfileId: shift.worker_profile_id,
+      currentUserId: this.currentUserId,
+      startTime: shift.start_time
+    });
+    const canUnassign = shift.status === 'assigned' && 
+           shift.worker_profile_id === this.currentUserId &&
+           new Date() < new Date(shift.start_time);
+    console.log('Can unassign result:', canUnassign);
+    return canUnassign;
   }
 
   async startShift(shiftId: string) {
@@ -231,6 +307,23 @@ export class MyShiftsPage implements OnInit {
     }
   }
 
+  async unassignShift(shift: Shift) {
+    try {
+      await firstValueFrom(this.shiftService.unassignShift(shift.id));
+      // Remove the unassigned shift from the current list
+      this.shifts = this.shifts.filter(s => s.id !== shift.id);
+      this.filteredShifts = this.filteredShifts.filter(s => s.id !== shift.id);
+      await this.presentToast('Successfully unassigned from shift');
+      // Navigate to available shifts tab and trigger a refresh
+      await this.router.navigate(['/worker/available-shifts']);
+      // Emit an event to refresh available shifts
+      window.dispatchEvent(new CustomEvent('refresh-available-shifts'));
+    } catch (error: any) {
+      console.error('Error unassigning shift:', error);
+      await this.presentToast(error.message || 'Failed to unassign from shift', 'danger');
+    }
+  }
+
   refreshShifts(event: any) {
     this.currentPage = 1;
     this.shiftService.getWorkerShifts({
@@ -271,5 +364,15 @@ export class MyShiftsPage implements OnInit {
 
   viewShiftDetails(shiftId: string) {
     this.router.navigate(['/worker/shifts/details', shiftId]);
+  }
+
+  private async presentToast(message: string, color: string = 'success') {
+    const toast = await this.toastCtrl.create({
+      message,
+      duration: 2000,
+      color,
+      position: 'bottom'
+    });
+    await toast.present();
   }
 } 

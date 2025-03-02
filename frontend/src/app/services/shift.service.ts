@@ -286,6 +286,51 @@ export class ShiftService extends BaseHttpService {
     );
   }
 
+  unassignShift(shiftId: string): Observable<Shift> {
+    console.log('Unassigning shift:', shiftId);
+    const headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    };
+    
+    // First get the current shift status
+    return this.getShift(shiftId).pipe(
+      tap(shift => {
+        console.log('Current shift details before unassign:', {
+          id: shift.id,
+          status: shift.status,
+          worker_profile_id: shift.worker_profile_id,
+          current_user_worker_profile_id: this.getCurrentWorkerProfileId(),
+          start_time: shift.start_time,
+          current_time: new Date().toISOString()
+        });
+      }),
+      switchMap(shift => 
+        this.http.post<Shift>(
+          `${this.apiUrl}${this.buildUrl(this.endpoints['unassign'], { id: shiftId })}`,
+          null,
+          { headers }
+        )
+      ),
+      tap(response => {
+        console.log('Unassign response:', response);
+      }),
+      catchError(error => {
+        console.error('Error unassigning shift:', error);
+        console.error('Error details:', {
+          status: error.status,
+          statusText: error.statusText,
+          message: error.message,
+          error: error.error
+        });
+        if (error.status === 422) {
+          throw new Error(error.error?.error || 'Cannot unassign this shift. It may have already started or been completed.');
+        }
+        throw error;
+      })
+    );
+  }
+
   getWorkerShifts(params: any = {}): Observable<PaginatedResponse<Shift>> {
     console.log('Getting worker shifts with params:', params);
     return this.authService.currentUser.pipe(
