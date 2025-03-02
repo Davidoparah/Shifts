@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { IonicModule } from '@ionic/angular';
+import { IonicModule, ToastController } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
@@ -16,6 +16,7 @@ import { AuthService } from '../../core/services/auth.service';
               <span class="text-xl font-semibold">Worker Dashboard</span>
             </div>
             <ion-buttons slot="end">
+              <!-- Temporarily disabled until Phase 4
               <ion-button (click)="openNotifications()">
                 <ion-icon slot="icon-only" name="notifications-outline" size="large"></ion-icon>
                 <ion-badge *ngIf="notificationCount > 0" color="danger">{{ notificationCount }}</ion-badge>
@@ -23,6 +24,10 @@ import { AuthService } from '../../core/services/auth.service';
               <ion-button (click)="openChat()">
                 <ion-icon slot="icon-only" name="chatbubbles-outline" size="large"></ion-icon>
                 <ion-badge *ngIf="unreadMessages > 0" color="danger">{{ unreadMessages }}</ion-badge>
+              </ion-button>
+              -->
+              <ion-button (click)="logout()" color="danger">
+                <ion-icon slot="icon-only" name="log-out-outline" size="large"></ion-icon>
               </ion-button>
             </ion-buttons>
           </div>
@@ -73,12 +78,14 @@ import { AuthService } from '../../core/services/auth.service';
         <ion-fab-button (click)="reportIncident()" color="danger">
           <ion-icon name="warning"></ion-icon>
         </ion-fab-button>
+        <!-- Temporarily disabled until Phase 4
         <ion-fab-button (click)="startChat()" color="primary">
           <ion-icon name="chatbubbles"></ion-icon>
         </ion-fab-button>
         <ion-fab-button (click)="viewMap()" color="success">
           <ion-icon name="location"></ion-icon>
         </ion-fab-button>
+        -->
       </ion-fab-list>
     </ion-fab>
   `,
@@ -166,7 +173,8 @@ export class WorkerPage implements OnInit {
 
   constructor(
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private toastCtrl: ToastController
   ) {}
 
   ngOnInit() {
@@ -177,42 +185,62 @@ export class WorkerPage implements OnInit {
   }
 
   private loadNotifications() {
-    // TODO: Implement notification loading
-    this.notificationCount = 2;
+    // TODO: Implement in Phase 4
+    this.notificationCount = 0;
   }
 
   private loadMessages() {
-    // TODO: Implement message loading
-    this.unreadMessages = 3;
+    // TODO: Implement in Phase 4
+    this.unreadMessages = 0;
   }
 
   private loadActiveShifts() {
     // TODO: Implement active shifts loading
-    this.activeShifts = 1;
+    this.activeShifts = 0;
   }
 
-  openNotifications() {
-    this.router.navigate(['/worker/notifications']);
+  async openNotifications() {
+    const toast = await this.toastCtrl.create({
+      message: 'Notifications feature coming soon in Phase 4',
+      duration: 2000,
+      position: 'bottom'
+    });
+    await toast.present();
   }
 
-  openChat() {
-    this.router.navigate(['/worker/chat']);
+  async openChat() {
+    const toast = await this.toastCtrl.create({
+      message: 'Chat feature coming soon in Phase 4',
+      duration: 2000,
+      position: 'bottom'
+    });
+    await toast.present();
   }
 
   reportIncident() {
     this.router.navigate(['/worker/incidents/report']);
   }
 
-  startChat() {
-    this.router.navigate(['/worker/chat/new']);
+  async startChat() {
+    const toast = await this.toastCtrl.create({
+      message: 'Chat feature coming soon in Phase 4',
+      duration: 2000,
+      position: 'bottom'
+    });
+    await toast.present();
   }
 
-  viewMap() {
-    this.router.navigate(['/worker/map']);
+  async viewMap() {
+    const toast = await this.toastCtrl.create({
+      message: 'Map feature coming soon in Phase 4',
+      duration: 2000,
+      position: 'bottom'
+    });
+    await toast.present();
   }
 
   async logout() {
-    await this.authService.logout();
-    this.router.navigate(['/auth/login']);
+    this.authService.logout();
+    await this.router.navigate(['/auth/login']);
   }
 } 

@@ -4,11 +4,13 @@ import { AvailableShiftsPage } from './shifts/available-shifts.page';
 import { MyShiftsPage } from './shifts/my-shifts.page';
 import { ShiftDetailsPage } from './shifts/shift-details.page';
 import { EarningsPage } from './earnings/earnings.page';
+import { AuthGuard } from '../../guards/auth.guard';
 
 export const routes: Routes = [
   {
     path: '',
     component: WorkerPage,
+    canActivate: [AuthGuard],
     children: [
       {
         path: '',
@@ -17,7 +19,8 @@ export const routes: Routes = [
       },
       {
         path: 'available-shifts',
-        component: AvailableShiftsPage
+        component: AvailableShiftsPage,
+        data: { filter: 'available' }
       },
       {
         path: 'my-shifts',
@@ -38,8 +41,8 @@ export const routes: Routes = [
       {
         path: 'profile',
         loadChildren: () => import('./profile/profile.routes').then(m => m.routes)
-      },
-      // Temporarily comment out routes until components are implemented
+      }
+      // TODO: Implement these features in Phase 4
       /*
       {
         path: 'chat',
@@ -52,10 +55,6 @@ export const routes: Routes = [
       {
         path: 'notifications',
         loadChildren: () => import('./notifications/notifications.routes').then(m => m.routes)
-      },
-      {
-        path: 'profile',
-        loadChildren: () => import('./profile/profile.routes').then(m => m.routes)
       }
       */
     ]

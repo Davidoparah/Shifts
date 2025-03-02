@@ -175,7 +175,7 @@ module Api
     def start
       authorize! :start, @shift
       
-      if @shift.can_start? && @shift.start_shift
+      if @shift.can_start?(current_user.worker_profile.id) && @shift.start_shift
         render json: @shift.as_json(include: { business: { only: [:id, :name] } })
       else
         render json: { error: 'Cannot start shift' }, status: :unprocessable_entity
@@ -244,13 +244,26 @@ module Api
       when 'available'
         shifts.available
       when 'upcoming'
-        shifts.upcoming
+        shifts.where(
+          worker_profile_id: current_user.worker_profile.id,
+          :start_time.gt => Time.current,
+          :status.in => ['assigned', 'in_progress']
+        )
       when 'in_progress'
-        shifts.in_progress
+        shifts.where(
+          worker_profile_id: current_user.worker_profile.id,
+          status: 'in_progress'
+        )
       when 'completed'
-        shifts.completed
+        shifts.where(
+          worker_profile_id: current_user.worker_profile.id,
+          status: 'completed'
+        )
       when 'cancelled'
-        shifts.cancelled
+        shifts.where(
+          worker_profile_id: current_user.worker_profile.id,
+          status: 'cancelled'
+        )
       else
         shifts
       end

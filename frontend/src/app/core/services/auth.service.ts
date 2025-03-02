@@ -4,45 +4,81 @@ import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
 import { tap, map, catchError } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { Router } from '@angular/router';
+import { WorkerProfile } from '../models/user.model';
+import { BaseHttpService } from './base-http.service';
 
 export interface User {
   id: string;
   email: string;
-  name?: string;
+  first_name: string;
+  last_name: string;
   role: 'admin' | 'business_owner' | 'worker';
+  status: string;
+  worker_profile?: WorkerProfile;
+  business_profile?: any;
   created_at: string;
   updated_at: string;
 }
 
 export interface AuthResponse {
   token: string;
+  refresh_token: string;
   user: User;
 }
 
 @Injectable({
   providedIn: 'root'
 })
-export class AuthService {
+export class AuthService extends BaseHttpService {
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   currentUser = this.currentUserSubject.asObservable();
   private tokenKey = 'auth_token';
+  private userKey = 'current_user';
 
   constructor(
-    private http: HttpClient,
+    http: HttpClient,
     private router: Router
   ) {
+    super(http, 'auth');
     this.loadStoredUser();
+  }
+
+  protected override handleError(error: HttpErrorResponse): Observable<never> {
+    console.error('An error occurred:', error);
+    return throwError(() => error);
   }
 
   private loadStoredUser() {
     const token = localStorage.getItem(this.tokenKey);
-    if (token) {
-      this.validateToken(token).subscribe();
+    const storedUser = localStorage.getItem(this.userKey);
+    
+    console.log('Loading stored user - Token:', !!token, 'Stored user:', !!storedUser);
+    
+    if (token && storedUser) {
+      try {
+        const user = JSON.parse(storedUser);
+        console.log('Parsed stored user:', user);
+        this.currentUserSubject.next(user);
+        // Validate token and update user data in background
+        this.validateToken(token).subscribe({
+          next: (valid) => console.log('Token validation result:', valid),
+          error: (err) => console.error('Token validation error:', err)
+        });
+      } catch (e) {
+        console.error('Error parsing stored user:', e);
+        this.logout();
+      }
+    } else if (token) {
+      // If we only have token, validate it to get user data
+      this.validateToken(token).subscribe({
+        next: (valid) => console.log('Token only validation result:', valid),
+        error: (err) => console.error('Token only validation error:', err)
+      });
     }
   }
 
   login(email: string, password: string): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${environment.apiUrl}/auth/login`, { email, password })
+    return this.post<AuthResponse>(this.endpoints['login'], { email, password })
       .pipe(
         tap(response => this.handleAuthentication(response)),
         catchError(this.handleError)
@@ -50,12 +86,7 @@ export class AuthService {
   }
 
   register(userData: any): Observable<AuthResponse> {
-    const headers = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json'
-    };
-
-    return this.http.post<AuthResponse>(`${environment.apiUrl}/auth/register`, userData, { headers })
+    return this.post<AuthResponse>(this.endpoints['register'], userData)
       .pipe(
         tap(response => this.handleAuthentication(response)),
         catchError(error => {
@@ -70,6 +101,7 @@ export class AuthService {
 
   logout() {
     localStorage.removeItem(this.tokenKey);
+    localStorage.removeItem(this.userKey);
     this.currentUserSubject.next(null);
     this.router.navigate(['/auth/login']);
   }
@@ -88,7 +120,7 @@ export class AuthService {
   }
 
   private validateToken(token: string): Observable<boolean> {
-    return this.http.get<User>(`${environment.apiUrl}/auth/me`)
+    return this.get<User>(this.endpoints['me'])
       .pipe(
         map(user => {
           this.currentUserSubject.next(user);
@@ -103,6 +135,7 @@ export class AuthService {
 
   private handleAuthentication(response: AuthResponse) {
     localStorage.setItem(this.tokenKey, response.token);
+    localStorage.setItem(this.userKey, JSON.stringify(response.user));
     this.currentUserSubject.next(response.user);
     
     // If user is a worker, ensure they have a profile
@@ -113,30 +146,25 @@ export class AuthService {
     }
   }
 
-  private handleError(error: HttpErrorResponse) {
-    let errorMessage = 'An error occurred';
-    if (error.error instanceof ErrorEvent) {
-      // Client-side error
-      errorMessage = error.error.message;
-    } else {
-      // Server-side error
-      errorMessage = error.error?.message || error.message;
-    }
-    return throwError(() => new Error(errorMessage));
-  }
-
   forgotPassword(email: string): Observable<any> {
-    return this.http.post(`${environment.apiUrl}/auth/forgot-password`, { email })
+    return this.post(this.endpoints['forgotPassword'], { email })
       .pipe(catchError(this.handleError));
   }
 
   resetPassword(token: string, password: string): Observable<any> {
-    return this.http.post(`${environment.apiUrl}/auth/reset-password`, { token, password })
+    return this.post(this.endpoints['resetPassword'], { token, password })
       .pipe(catchError(this.handleError));
   }
 
   ensureWorkerProfile(): Observable<any> {
-    return this.http.post(`${environment.apiUrl}/auth/ensure-worker-profile`, {})
+    return this.post('/ensure-worker-profile', {})
       .pipe(catchError(this.handleError));
+  }
+
+  updateCurrentUser(user: User) {
+    console.log('Updating current user:', user);
+    localStorage.setItem(this.userKey, JSON.stringify(user));
+    this.currentUserSubject.next(user);
+    console.log('Current user updated in storage and state');
   }
 } 

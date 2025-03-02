@@ -5,7 +5,10 @@ import { RouterModule } from '@angular/router';
 import { ShiftService } from '../../../services/shift.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { Shift } from '../../../models/shift.model';
-import { ShiftApplication } from '../../../models/shift-application.model';
+import { User, WorkerProfile } from '../../../core/models/user.model';
+import { Router } from '@angular/router';
+import { WorkerService } from '../../../services/worker.service';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-available-shifts',
@@ -33,12 +36,12 @@ import { ShiftApplication } from '../../../models/shift-application.model';
         <ion-item-sliding *ngFor="let shift of availableShifts">
           <ion-item>
             <ion-label>
-              <h2>{{ shift.title }}</h2>
-              <h3>{{ shift.business_name }}</h3>
+              <h2>{{ shift.title || 'Untitled Shift' }}</h2>
+              <h3>{{ shift.business_name || 'Business Name Not Available' }}</h3>
               <p>{{ shift.start_time | date:'medium' }} - {{ shift.end_time | date:'medium' }}</p>
               <p>
                 <ion-icon name="location-outline"></ion-icon>
-                {{ shift.location_name ? shift.location_name + ' - ' : '' }}{{ shift.location_address || 'No location set' }}
+                {{ shift.location_name ? shift.location_name + ' - ' : '' }}{{ shift.location_address || 'Location not specified' }}
               </p>
               <p>
                 <ion-icon name="cash-outline"></ion-icon>
@@ -117,7 +120,9 @@ export class AvailableShiftsPage implements OnInit {
     private shiftService: ShiftService,
     private toastCtrl: ToastController,
     private alertCtrl: AlertController,
-    private authService: AuthService
+    private authService: AuthService,
+    private router: Router,
+    private workerService: WorkerService
   ) {
     const currentUser = this.authService.getCurrentUser();
     this.currentUserId = currentUser?.id;
@@ -134,9 +139,11 @@ export class AvailableShiftsPage implements OnInit {
       per_page: this.perPage
     }).subscribe({
       next: (response) => {
+        console.log('Available shifts response:', response);
         this.availableShifts = response.data.sort((a, b) =>
           new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
         );
+        console.log('Sorted available shifts:', this.availableShifts);
         this.loading = false;
       },
       error: (error) => {
@@ -147,9 +154,12 @@ export class AvailableShiftsPage implements OnInit {
   }
 
   async applyForShift(shift: Shift) {
+    const businessName = shift.business_name || 'this business';
+    const shiftTitle = shift.title || 'this shift';
+
     const alert = await this.alertCtrl.create({
       header: 'Apply for Shift',
-      message: `Are you sure you want to apply for "${shift.title}" at ${shift.business?.name}?`,
+      message: `Are you sure you want to apply for "${shiftTitle}" at ${businessName}?`,
       buttons: [
         {
           text: 'Cancel',
@@ -171,23 +181,55 @@ export class AvailableShiftsPage implements OnInit {
       return;
     }
 
-    const currentUser = this.authService.getCurrentUser();
+    const currentUser = this.authService.getCurrentUser() as User | null;
+    console.log('Current user:', currentUser);
+    console.log('Worker profile:', currentUser?.worker_profile);
+    
     if (!currentUser) {
-      await this.presentToast('Unable to verify user information', 'warning');
+      await this.presentToast('User not found', 'warning');
       return;
     }
 
+    if (!currentUser.worker_profile) {
+      // If worker profile doesn't exist, try to fetch it
+      try {
+        const workerProfile = await this.fetchWorkerProfile();
+        if (!workerProfile) {
+          await this.presentToast('Please complete your worker profile setup', 'warning');
+          // Optionally navigate to profile setup
+          this.router.navigate(['/worker/profile/setup']);
+          return;
+        }
+      } catch (error) {
+        console.error('Error fetching worker profile:', error);
+        await this.presentToast('Error loading worker profile', 'danger');
+        return;
+      }
+    }
+
     try {
-      const application: ShiftApplication = {
-        worker_id: currentUser.id,
-        availability_confirmed: true
-      };
-      await this.shiftService.applyToShift(shift.id, application).toPromise();
+      await firstValueFrom(this.shiftService.applyForShift(shift.id));
+      await this.loadShifts();
       await this.presentToast('Successfully applied to shift');
-      this.loadShifts();
     } catch (error) {
       console.error('Error applying to shift:', error);
       await this.presentToast('Failed to apply to shift', 'danger');
+    }
+  }
+
+  private async fetchWorkerProfile(): Promise<WorkerProfile | null> {
+    try {
+      const response = await this.workerService.getProfile().toPromise();
+      if (response && response.worker_profile) {
+        // Update the auth service with the worker profile
+        const currentUser = this.authService.getCurrentUser() as User;
+        currentUser.worker_profile = response.worker_profile;
+        return response.worker_profile;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching worker profile:', error);
+      return null;
     }
   }
 

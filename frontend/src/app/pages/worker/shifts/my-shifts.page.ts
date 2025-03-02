@@ -4,8 +4,9 @@ import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ShiftService } from '../../../services/shift.service';
-import { Shift, ShiftStatus } from '../../../models/shift.model';
+import { Shift, ShiftStatus, canStart, canComplete } from '../../../models/shift.model';
 import { PaginatedResponse } from '../../../models/common.model';
+import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-my-shifts',
@@ -40,9 +41,10 @@ import { PaginatedResponse } from '../../../models/common.model';
       <ion-list>
         <ion-item-sliding *ngFor="let shift of filteredShifts">
           <ion-item>
-            <ion-label (click)="viewShiftDetails(shift.id)" style="cursor: pointer">
+            <ion-label (click)="viewShiftDetails(shift.id)">
               <h2>{{ shift.title }}</h2>
-              <h3>{{ shift.start_time | date:'medium' }}</h3>
+              <h3>{{ shift.business_name }}</h3>
+              <p>{{ shift.start_time | date:'medium' }} - {{ shift.end_time | date:'medium' }}</p>
               <p>
                 <ion-icon name="location-outline"></ion-icon>
                 {{ shift.location_name ? shift.location_name + ' - ' : '' }}{{ shift.location_address || 'No location set' }}
@@ -59,9 +61,11 @@ import { PaginatedResponse } from '../../../models/common.model';
 
           <ion-item-options side="end">
             <ion-item-option *ngIf="canStartShift(shift)" color="primary" (click)="startShift(shift.id)">
+              <ion-icon slot="icon-only" name="play"></ion-icon>
               Start
             </ion-item-option>
             <ion-item-option *ngIf="canCompleteShift(shift)" color="success" (click)="completeShift(shift.id)">
+              <ion-icon slot="icon-only" name="checkmark"></ion-icon>
               Complete
             </ion-item-option>
           </ion-item-options>
@@ -102,12 +106,17 @@ export class MyShiftsPage implements OnInit {
   loading = true;
   currentPage = 1;
   perPage = 10;
+  currentUserId: string | null = null;
 
   constructor(
     private shiftService: ShiftService,
     private toastCtrl: ToastController,
-    private router: Router
-  ) {}
+    private router: Router,
+    private authService: AuthService
+  ) {
+    const currentUser = this.authService.getCurrentUser();
+    this.currentUserId = currentUser?.id || null;
+  }
 
   ngOnInit() {
     this.loadShifts();
@@ -115,17 +124,34 @@ export class MyShiftsPage implements OnInit {
 
   loadShifts() {
     this.loading = true;
+    console.log('Loading shifts with segment:', this.selectedSegment);
+    
+    const workerProfileId = this.authService.getCurrentUser()?.worker_profile?.id;
+    console.log('Current worker profile ID:', workerProfileId);
+
     this.shiftService.getWorkerShifts({
       page: this.currentPage,
       per_page: this.perPage,
       filter: this.selectedSegment
     }).subscribe({
       next: (response: PaginatedResponse<Shift>) => {
+        console.log('Worker shifts response:', response);
         if (response && response.data) {
           this.shifts = response.data;
-          this.filteredShifts = this.shifts.sort((a, b) =>
-            new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
-          );
+          // Filter shifts based on the selected segment
+          this.filteredShifts = this.shifts
+            .filter(shift => {
+              if (this.selectedSegment === 'upcoming') {
+                const now = new Date();
+                return (shift.status === 'assigned' || shift.status === 'in_progress') &&
+                       shift.worker_profile_id === workerProfileId &&
+                       new Date(shift.start_time) > now;
+              }
+              return shift.status === this.selectedSegment;
+            })
+            .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+          
+          console.log('Filtered shifts:', this.filteredShifts);
         } else {
           this.shifts = [];
           this.filteredShifts = [];
@@ -146,26 +172,23 @@ export class MyShiftsPage implements OnInit {
   }
 
   canStartShift(shift: Shift): boolean {
-    if (!shift) return false;
-    
-    const now = new Date();
-    const startTime = new Date(shift.start_time);
-    const endTime = new Date(shift.end_time);
-    const fifteenMinutesBefore = new Date(startTime.getTime() - 15 * 60000);
-    
-    return (
-      shift.status === 'assigned' &&
-      now >= fifteenMinutesBefore &&
-      now <= endTime
-    );
+    if (!this.currentUserId) return false;
+    return shift.status === 'assigned' && 
+           shift.worker_profile_id === this.currentUserId &&
+           new Date() >= new Date(new Date(shift.start_time).getTime() - 15 * 60000) && // 15 minutes before
+           new Date() <= new Date(shift.end_time);
   }
 
   canCompleteShift(shift: Shift): boolean {
-    return shift.status === 'in_progress';
+    if (!this.currentUserId) return false;
+    return shift.status === 'in_progress' &&
+           shift.worker_profile_id === this.currentUserId &&
+           new Date() >= new Date(shift.start_time);
   }
 
   async startShift(shiftId: string) {
     try {
+      console.log('Starting shift:', shiftId);
       await this.shiftService.startShift(shiftId).toPromise();
       this.loadShifts();
       
@@ -188,7 +211,7 @@ export class MyShiftsPage implements OnInit {
 
   async completeShift(shiftId: string) {
     try {
-      await this.shiftService.completeShift(shiftId, {}).toPromise();
+      await this.shiftService.completeShift(shiftId).toPromise();
       this.loadShifts();
       
       const toast = await this.toastCtrl.create({

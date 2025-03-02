@@ -5,6 +5,8 @@ import { FormsModule } from '@angular/forms';
 import { ShiftService } from '../../../services/shift.service';
 import { Shift, Location } from '../../../models/shift.model';
 import { firstValueFrom } from 'rxjs';
+import { PaginatedResponse } from '../../../models/common.model';
+import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-schedule',
@@ -16,14 +18,6 @@ import { firstValueFrom } from 'rxjs';
         </ion-buttons>
         <ion-title>My Schedule</ion-title>
       </ion-toolbar>
-      <ion-segment [(ngModel)]="selectedTab" (ionChange)="onTabChange()">
-        <ion-segment-button value="upcoming">
-          <ion-label>Upcoming</ion-label>
-        </ion-segment-button>
-        <ion-segment-button value="applied">
-          <ion-label>Applied</ion-label>
-        </ion-segment-button>
-      </ion-segment>
     </ion-header>
 
     <ion-content>
@@ -31,8 +25,7 @@ import { firstValueFrom } from 'rxjs';
         <ion-refresher-content></ion-refresher-content>
       </ion-refresher>
 
-      <!-- Upcoming Shifts -->
-      <ion-list *ngIf="selectedTab === 'upcoming'">
+      <ion-list>
         <ion-item-sliding *ngFor="let shift of upcomingShifts">
           <ion-item>
             <ion-label>
@@ -49,7 +42,9 @@ import { firstValueFrom } from 'rxjs';
                 <ion-icon name="cash-outline"></ion-icon>
                 {{shift.rate | currency}}/hr
               </p>
-              <ion-badge color="success">Confirmed</ion-badge>
+              <ion-badge [color]="shift.status === 'in_progress' ? 'primary' : 'success'">
+                {{shift.status === 'in_progress' ? 'In Progress' : 'Confirmed'}}
+              </ion-badge>
             </ion-label>
           </ion-item>
 
@@ -63,42 +58,6 @@ import { firstValueFrom } from 'rxjs';
         <ion-item *ngIf="upcomingShifts.length === 0">
           <ion-label class="ion-text-center">
             <p>No upcoming shifts</p>
-          </ion-label>
-        </ion-item>
-      </ion-list>
-
-      <!-- Applied Shifts -->
-      <ion-list *ngIf="selectedTab === 'applied'">
-        <ion-item-sliding *ngFor="let shift of appliedShifts">
-          <ion-item>
-            <ion-label>
-              <h2>{{shift.business.name}}</h2>
-              <p>
-                <ion-icon name="location-outline"></ion-icon>
-                {{isLocationObject(shift.location) ? shift.location.formatted_address : shift.location}}
-              </p>
-              <p>
-                <ion-icon name="time-outline"></ion-icon>
-                {{formatDateTime(shift.start_time)}} - {{formatDateTime(shift.end_time)}}
-              </p>
-              <p>
-                <ion-icon name="cash-outline"></ion-icon>
-                {{shift.rate | currency}}/hr
-              </p>
-              <ion-badge color="warning">Pending</ion-badge>
-            </ion-label>
-          </ion-item>
-
-          <ion-item-options side="end">
-            <ion-item-option color="danger" (click)="cancelApplication(shift)">
-              <ion-icon slot="icon-only" name="close-circle"></ion-icon>
-            </ion-item-option>
-          </ion-item-options>
-        </ion-item-sliding>
-
-        <ion-item *ngIf="appliedShifts.length === 0">
-          <ion-label class="ion-text-center">
-            <p>No pending applications</p>
           </ion-label>
         </ion-item>
       </ion-list>
@@ -130,18 +89,22 @@ import { firstValueFrom } from 'rxjs';
   imports: [IonicModule, CommonModule, FormsModule]
 })
 export class SchedulePage implements OnInit {
-  selectedTab = 'upcoming';
   upcomingShifts: Shift[] = [];
-  appliedShifts: Shift[] = [];
+  loading = false;
+  currentPage = 1;
+  perPage = 10;
+  selectedSegment = '';
 
   constructor(
     private shiftService: ShiftService,
     private alertCtrl: AlertController,
-    private toastCtrl: ToastController
+    private toastCtrl: ToastController,
+    private authService: AuthService
   ) {}
 
   ngOnInit() {
     this.loadShifts();
+    this.startPeriodicRefresh();
   }
 
   isLocationObject(location: any): location is Location {
@@ -159,28 +122,81 @@ export class SchedulePage implements OnInit {
     });
   }
 
-  onTabChange() {
-    // Tab change handler if needed
-  }
+  loadShifts() {
+    this.loading = true;
+    console.log('Loading shifts in schedule page...');
+    
+    const currentWorkerProfileId = this.authService.getCurrentUser()?.worker_profile?.id;
+    console.log('Schedule page - Current worker profile ID:', currentWorkerProfileId);
 
-  async loadShifts() {
-    try {
-      const shifts = await firstValueFrom(this.shiftService.getWorkerShifts());
-      this.categorizeShifts(shifts);
-    } catch (error) {
-      console.error('Error loading shifts:', error);
-      const toast = await this.toastCtrl.create({
-        message: 'Failed to load shifts',
-        duration: 3000,
-        color: 'danger'
-      });
-      await toast.present();
-    }
+    this.shiftService.getWorkerShifts({
+      page: this.currentPage,
+      per_page: this.perPage,
+      filter: 'upcoming'
+    }).subscribe({
+      next: (response: PaginatedResponse<Shift>) => {
+        console.log('Schedule page - Worker shifts response:', response);
+        if (response && response.data) {
+          console.log('Schedule page - Raw shifts data:', response.data);
+          console.log('Schedule page - Detailed shifts info:', response.data.map(s => ({
+            id: s.id,
+            status: s.status,
+            worker_id: s.worker_profile_id,
+            start_time: s.start_time,
+            business_name: s.business_name
+          })));
+          this.categorizeShifts(response.data);
+        } else {
+          console.log('Schedule page - No shifts data in response');
+          this.upcomingShifts = [];
+        }
+        this.loading = false;
+      },
+      error: (error: Error) => {
+        console.error('Schedule page - Error loading shifts:', error);
+        this.upcomingShifts = [];
+        this.loading = false;
+      }
+    });
   }
 
   categorizeShifts(shifts: Shift[]) {
-    this.appliedShifts = shifts.filter(shift => shift.status === 'available');
-    this.upcomingShifts = shifts.filter(shift => shift.status === 'assigned');
+    if (!shifts) {
+      console.log('No shifts provided to categorize');
+      this.upcomingShifts = [];
+      return;
+    }
+
+    const currentWorkerProfileId = this.authService.getCurrentUser()?.worker_profile?.id;
+    console.log('Categorizing shifts for worker:', currentWorkerProfileId);
+    console.log('Total shifts to categorize:', shifts.length);
+    
+    // Filter shifts for upcoming tab
+    this.upcomingShifts = shifts.filter(shift => {
+      const isAssignedOrInProgress = shift.status === 'assigned' || shift.status === 'in_progress';
+      const isForWorker = shift.worker_profile_id === currentWorkerProfileId;
+      const isUpcoming = new Date(shift.start_time) > new Date();
+      
+      console.log(`Shift ${shift.id}:`, {
+        status: shift.status,
+        worker_id: shift.worker_profile_id,
+        start_time: shift.start_time,
+        isAssignedOrInProgress,
+        isForWorker,
+        isUpcoming
+      });
+      
+      return isAssignedOrInProgress && isForWorker && isUpcoming;
+    });
+
+    console.log('Filtered upcoming shifts:', this.upcomingShifts);
+
+    // Sort by start time
+    this.upcomingShifts.sort((a, b) => 
+      new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+    );
+    
+    console.log('Final sorted upcoming shifts:', this.upcomingShifts);
   }
 
   async handleRefresh(event: any) {
@@ -227,42 +243,12 @@ export class SchedulePage implements OnInit {
     await alert.present();
   }
 
-  async cancelApplication(shift: Shift) {
-    const alert = await this.alertCtrl.create({
-      header: 'Cancel Application',
-      message: 'Are you sure you want to cancel your application for this shift?',
-      buttons: [
-        {
-          text: 'No',
-          role: 'cancel'
-        },
-        {
-          text: 'Yes',
-          handler: async () => {
-            try {
-              await firstValueFrom(this.shiftService.cancelShift(shift.id));
-              await this.loadShifts();
-              
-              const toast = await this.toastCtrl.create({
-                message: 'Application cancelled successfully',
-                duration: 2000,
-                color: 'success'
-              });
-              await toast.present();
-            } catch (error) {
-              console.error('Error cancelling application:', error);
-              const toast = await this.toastCtrl.create({
-                message: 'Failed to cancel application',
-                duration: 3000,
-                color: 'danger'
-              });
-              await toast.present();
-            }
-          }
-        }
-      ]
-    });
-
-    await alert.present();
+  // Add a method to start periodic refresh
+  startPeriodicRefresh() {
+    // Refresh every 30 seconds
+    setInterval(() => {
+      console.log('Schedule page - Performing periodic refresh');
+      this.loadShifts();
+    }, 30000);
   }
 } 

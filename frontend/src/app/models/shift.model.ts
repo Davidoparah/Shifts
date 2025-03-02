@@ -1,11 +1,10 @@
-export type ShiftStatus = 'available' | 'assigned' | 'in_progress' | 'completed' | 'cancelled';
+export type ShiftStatus = 'available' | 'assigned' | 'in_progress' | 'completed' | 'cancelled' | 'applied';
 
 export interface Location {
   id: string;
   name: string;
   address: string;
-  latitude: number;
-  longitude: number;
+  coordinates: [number, number]; // [longitude, latitude]
 }
 
 export interface Business {
@@ -13,6 +12,7 @@ export interface Business {
   name: string;
   logo_url?: string;
   rating?: number;
+  status: string;
 }
 
 export interface Worker {
@@ -23,32 +23,32 @@ export interface Worker {
 }
 
 export interface ShiftApplication {
-  worker_id: string;
-  notes?: string;
-  availability_confirmed: boolean;
+  worker_profile_id: string;
+  worker_name: string;
+  applied_at: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Shift {
   id: string;
   title: string;
   description: string;
-  start_time: string;
-  end_time: string;
+  start_time: string; // ISO string format
+  end_time: string; // ISO string format
   hourly_rate: number;
-  rate: number; // Alias for hourly_rate for backward compatibility
   status: ShiftStatus;
-  required_experience_years?: number;
-  required_certifications?: string[];
-  special_requirements?: string;
+  requirements: string[];
   dress_code?: string;
-  requirements?: string[];
+  break_time?: number; // in minutes
   notes?: string;
   
   // Location details
+  location_id?: string;
   location_name: string;
   location_address: string;
-  location_coordinates?: number[];
-  location?: Location; // Making this optional since we're using direct fields
+  location_coordinates?: [number, number]; // [longitude, latitude]
   
   // Business details
   business_profile_id: string;
@@ -60,19 +60,62 @@ export interface Shift {
   worker_name?: string;
   worker?: Worker;
   
-  // Application details
+  // Progress tracking
+  check_in_time?: string; // ISO string format
+  check_out_time?: string; // ISO string format
+  actual_hours_worked?: number;
+  total_earnings?: number;
+  
+  // Applications
+  applications?: ShiftApplication[];
   applications_count?: number;
   has_applied?: boolean;
-  selected_worker_id?: string;
-  
-  // Progress tracking
-  check_in_time?: string;
-  check_out_time?: string;
-  actual_hours_worked?: number;
-  break_duration_minutes?: number;
-  total_earnings?: number;
   
   // Timestamps
   created_at: string;
   updated_at: string;
-} 
+}
+
+export const canApply = (shift: Shift, workerProfileId: string): boolean => {
+  if (!shift || !workerProfileId) return false;
+  return (
+    shift.status === 'available' &&
+    !shift.has_applied &&
+    new Date(shift.start_time) > new Date()
+  );
+};
+
+export const canStart = (shift: Shift, workerProfileId: string): boolean => {
+  if (!shift || !workerProfileId) return false;
+  const now = new Date();
+  const startTime = new Date(shift.start_time);
+  const endTime = new Date(shift.end_time);
+  const fifteenMinutesBefore = new Date(startTime.getTime() - 15 * 60000);
+  
+  return (
+    shift.status === 'assigned' &&
+    shift.worker_profile_id === workerProfileId &&
+    now >= fifteenMinutesBefore &&
+    now <= endTime
+  );
+};
+
+export const canComplete = (shift: Shift, workerProfileId: string): boolean => {
+  if (!shift || !workerProfileId) return false;
+  return (
+    shift.status === 'in_progress' &&
+    shift.worker_profile_id === workerProfileId &&
+    new Date() >= new Date(shift.start_time)
+  );
+};
+
+export const calculateDuration = (shift: Shift): number => {
+  const start = new Date(shift.start_time);
+  const end = new Date(shift.end_time);
+  return (end.getTime() - start.getTime()) / (1000 * 60 * 60); // Duration in hours
+};
+
+export const calculateEarnings = (shift: Shift): number => {
+  if (!shift.actual_hours_worked) return 0;
+  return shift.actual_hours_worked * shift.hourly_rate;
+}; 

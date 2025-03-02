@@ -39,27 +39,27 @@ module Api
       end
 
       def available
-        shifts = Shift.available
-                     .upcoming
-                     .order_by(start_time: :asc)
-                     .page(params[:page])
-                     .per(params[:per_page] || 20)
+        shifts = Shift.where(
+          status: 'available',
+          :start_time.gt => Time.current
+        ).order_by(start_time: :asc)
+         .page(params[:page])
+         .per(params[:per_page] || 20)
         
         render json: ShiftSerializer.new(shifts, pagination: shifts).as_json
       end
 
       def apply
         if @shift.can_apply?(current_user.worker_profile.id)
-          @shift.update(
-            status: 'assigned',
-            worker_profile_id: current_user.worker_profile.id,
-            worker_name: current_user.full_name,
-            worker: current_user
-          )
+          @shift.add_application(current_user)
           render json: ShiftSerializer.new(@shift).as_json
         else
           render json: { error: 'Cannot apply for this shift' }, status: :unprocessable_entity
         end
+      end
+
+      def applications
+        render json: { applications: @shift.get_applications }
       end
 
       def start
@@ -97,8 +97,9 @@ module Api
       end
 
       def destroy
+        authorize! :destroy, @shift
         if @shift.destroy
-          head :no_content
+          render json: { message: 'Shift successfully deleted' }
         else
           render json: { error: 'Failed to delete shift' }, status: :unprocessable_entity
         end
@@ -141,7 +142,9 @@ module Api
       end
 
       def ensure_can_manage!
-        unless current_user.admin? || @shift.business_profile_id == current_user.business_profile&.id
+        unless current_user.admin? || 
+               (@shift.business_profile_id == current_user.business&.id && 
+                @shift.status == 'available')
           render json: { error: 'Not authorized to manage this shift' }, status: :forbidden
         end
       end
@@ -161,8 +164,8 @@ module Api
           when 'upcoming'
             scope = scope.where(
               worker_profile_id: current_user.worker_profile.id,
-              status: 'assigned',
-              start_time: { :$gt => Time.current }
+              :status.in => ['assigned', 'in_progress'],
+              :start_time.gt => Time.current
             )
           when 'completed'
             scope = scope.where(
@@ -177,7 +180,7 @@ module Api
           when 'available'
             scope = scope.where(
               status: 'available',
-              start_time: { :$gt => Time.current }
+              :start_time.gt => Time.current
             )
           else
             scope = scope.where(worker_profile_id: current_user.worker_profile.id) unless params[:status] == 'available'

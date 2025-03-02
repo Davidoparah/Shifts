@@ -1,23 +1,26 @@
 import { environment } from '../../../environments/environment';
 
+const apiPrefix = `/api/${environment.apiVersion}`;
+
 export const microservicesConfig = {
   gateway: {
-    baseUrl: `${environment.apiUrl}`,
+    baseUrl: `${environment.apiUrl}${apiPrefix}`,
     timeout: 30000,
   },
   auth: {
-    baseUrl: `${environment.apiUrl}/auth`,
+    baseUrl: `${environment.apiUrl}${apiPrefix}/auth`,
     endpoints: {
       login: '/login',
       register: '/register',
       refreshToken: '/refresh-token',
       forgotPassword: '/forgot-password',
       resetPassword: '/reset-password',
-      me: '/me'
+      me: '/me',
+      ensureWorkerProfile: '/ensure-worker-profile'
     }
   },
   shift: {
-    baseUrl: `${environment.apiUrl}/shifts`,
+    baseUrl: `${environment.apiUrl}${apiPrefix}/shifts`,
     endpoints: {
       list: '/',
       create: '/',
@@ -25,24 +28,25 @@ export const microservicesConfig = {
       delete: '/:id',
       available: '/available',
       apply: '/:id/apply',
+      applications: '/:id/applications',
       start: '/:id/start',
       complete: '/:id/complete',
       cancel: '/:id/cancel',
-      'worker-shifts': '/worker/shifts'
+      'worker-shifts': '/'
     }
   },
   worker: {
-    baseUrl: `${environment.apiUrl}/workers`,
+    baseUrl: `${environment.apiUrl}${apiPrefix}`,
     endpoints: {
-      profile: '/profile',
-      shifts: '/shifts',
-      earnings: '/earnings',
-      availability: '/availability',
-      ratings: '/ratings',
+      profile: '/worker_profile',
+      shifts: '/workers/shifts',
+      earnings: '/workers/earnings',
+      availability: '/worker_profile/availability',
+      ratings: '/workers/ratings',
     }
   },
   business: {
-    baseUrl: `${environment.apiUrl}/businesses`,
+    baseUrl: `${environment.apiUrl}${apiPrefix}/businesses`,
     endpoints: {
       profile: '/profile',
       shifts: '/shifts',
@@ -52,7 +56,7 @@ export const microservicesConfig = {
     }
   },
   notification: {
-    baseUrl: `${environment.apiUrl}/notifications`,
+    baseUrl: `${environment.apiUrl}${apiPrefix}/notifications`,
     endpoints: {
       list: '',
       markRead: '/:id/read',
@@ -61,7 +65,7 @@ export const microservicesConfig = {
     }
   },
   payment: {
-    baseUrl: `${environment.apiUrl}/payments`,
+    baseUrl: `${environment.apiUrl}${apiPrefix}/payments`,
     endpoints: {
       methods: '/methods',
       transactions: '/transactions',
@@ -71,7 +75,7 @@ export const microservicesConfig = {
     }
   },
   chat: {
-    baseUrl: `${environment.apiUrl}/chat`,
+    baseUrl: `${environment.apiUrl}${apiPrefix}/chat`,
     endpoints: {
       conversations: '/conversations',
       messages: '/messages',

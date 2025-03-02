@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { IonicModule, AlertController, ToastController, InfiniteScrollCustomEvent } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
 import { ShiftService } from '../../../services/shift.service';
-import { Shift, Location } from '../../../models/shift.model';
+import { Shift } from '../../../models/shift.model';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
@@ -51,14 +51,10 @@ import { firstValueFrom } from 'rxjs';
                 <p class="shift-notes">{{shift.notes}}</p>
               </div>
             </ion-label>
+            <ion-button slot="end" (click)="applyForShift(shift)" [disabled]="shift.has_applied">
+              {{ shift.has_applied ? 'Applied' : 'Apply' }}
+            </ion-button>
           </ion-item>
-
-          <ion-item-options side="end">
-            <ion-item-option color="success" (click)="applyForShift(shift)">
-              <ion-icon slot="icon-only" name="checkmark"></ion-icon>
-              Apply
-            </ion-item-option>
-          </ion-item-options>
         </ion-item-sliding>
 
         <ion-item *ngIf="availableShifts.length === 0" class="no-shifts">
@@ -127,15 +123,6 @@ import { firstValueFrom } from 'rxjs';
         color: var(--ion-color-medium);
       }
     }
-
-    ion-item-option {
-      --padding-start: 16px;
-      --padding-end: 16px;
-      
-      ion-icon {
-        font-size: 24px;
-      }
-    }
   `],
   standalone: true,
   imports: [IonicModule, CommonModule]
@@ -143,8 +130,8 @@ import { firstValueFrom } from 'rxjs';
 export class AvailablePage implements OnInit {
   availableShifts: Shift[] = [];
   currentPage = 1;
+  perPage = 10;
   hasMoreData = true;
-  isLoading = false;
 
   constructor(
     private shiftService: ShiftService,
@@ -156,80 +143,50 @@ export class AvailablePage implements OnInit {
     this.loadShifts();
   }
 
-  async loadShifts(event?: any) {
-    if (this.isLoading) return;
-    
-    this.isLoading = true;
-    this.currentPage = 1;
-    
-    try {
-      console.log('Loading available shifts...');
-      const shifts = await firstValueFrom(this.shiftService.getAvailableShifts());
-      console.log('Loaded shifts:', shifts);
-      this.availableShifts = shifts;
-      
-      if (event) {
-        event.target.complete();
+  loadShifts(event?: any) {
+    this.shiftService.getAvailableShifts({
+      page: this.currentPage,
+      per_page: this.perPage
+    }).subscribe({
+      next: (response) => {
+        if (event) {
+          this.availableShifts = [...this.availableShifts, ...response.data];
+        } else {
+          this.availableShifts = response.data;
+        }
+        
+        this.hasMoreData = this.currentPage < response.meta.total_pages;
+        if (event) {
+          event.target.complete();
+          if (!this.hasMoreData) {
+            event.target.disabled = true;
+          }
+        }
+      },
+      error: (error) => {
+        console.error('Error loading shifts:', error);
+        if (event) {
+          event.target.complete();
+        }
       }
-    } catch (error) {
-      console.error('Error loading shifts:', error);
-      const toast = await this.toastCtrl.create({
-        message: 'Failed to load shifts. Please try again.',
-        duration: 3000,
-        color: 'danger',
-        position: 'bottom'
-      });
-      await toast.present();
-    } finally {
-      this.isLoading = false;
-    }
-  }
-
-  isLocationObject(location: string | Location): location is Location {
-    return typeof location !== 'string' && location !== null && 'formatted_address' in location;
-  }
-
-  formatDateTime(dateString: string): string {
-    const date = new Date(dateString);
-    return date.toLocaleString([], {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
     });
   }
 
-  async handleRefresh(event: any) {
-    await this.loadShifts(event);
-  }
-
-  async loadMore(event: InfiniteScrollCustomEvent) {
-    if (!this.hasMoreData) {
-      event.target.complete();
+  async applyForShift(shift: Shift) {
+    if (shift.has_applied) {
+      const toast = await this.toastCtrl.create({
+        message: 'You have already applied for this shift',
+        duration: 2000,
+        color: 'warning',
+        position: 'bottom'
+      });
+      await toast.present();
       return;
     }
 
-    this.currentPage++;
-    try {
-      const newShifts = await firstValueFrom(this.shiftService.getAvailableShifts());
-      if (newShifts.length > 0) {
-        this.availableShifts = [...this.availableShifts, ...newShifts];
-      } else {
-        this.hasMoreData = false;
-      }
-    } catch (error) {
-      console.error('Error loading more shifts:', error);
-      this.hasMoreData = false;
-    } finally {
-      event.target.complete();
-    }
-  }
-
-  async applyForShift(shift: Shift) {
     const alert = await this.alertCtrl.create({
       header: 'Apply for Shift',
-      message: 'Are you sure you want to apply for this shift?',
+      message: `Are you sure you want to apply for this shift at ${shift.business?.name}?`,
       buttons: [
         {
           text: 'Cancel',
@@ -239,21 +196,35 @@ export class AvailablePage implements OnInit {
           text: 'Apply',
           handler: async () => {
             try {
+              // Check if the shift is still available
+              if (shift.status !== 'available') {
+                throw new Error('This shift is no longer available');
+              }
+
+              // Check if the shift hasn't started yet
+              if (new Date(shift.start_time) <= new Date()) {
+                throw new Error('This shift has already started');
+              }
+
               await firstValueFrom(this.shiftService.applyForShift(shift.id));
-              await this.loadShifts();
+              
+              // Update the shift's status locally
+              shift.has_applied = true;
               
               const toast = await this.toastCtrl.create({
                 message: 'Successfully applied for shift',
                 duration: 2000,
-                color: 'success'
+                color: 'success',
+                position: 'bottom'
               });
               await toast.present();
-            } catch (error) {
+            } catch (error: any) {
               console.error('Error applying for shift:', error);
               const toast = await this.toastCtrl.create({
-                message: 'Failed to apply for shift',
+                message: error.message || 'Failed to apply for shift. Please try again.',
                 duration: 3000,
-                color: 'danger'
+                color: 'danger',
+                position: 'bottom'
               });
               await toast.present();
             }
@@ -263,5 +234,28 @@ export class AvailablePage implements OnInit {
     });
 
     await alert.present();
+  }
+
+  handleRefresh(event: any) {
+    this.currentPage = 1;
+    this.hasMoreData = true;
+    this.loadShifts(event);
+  }
+
+  loadMore(event: InfiniteScrollCustomEvent) {
+    if (this.hasMoreData) {
+      this.currentPage++;
+      this.loadShifts(event);
+    } else {
+      event.target.complete();
+    }
+  }
+
+  isLocationObject(location: any): location is { formatted_address: string } {
+    return typeof location === 'object' && location !== null && 'formatted_address' in location;
+  }
+
+  formatDateTime(date: string | Date): string {
+    return new Date(date).toLocaleString();
   }
 }

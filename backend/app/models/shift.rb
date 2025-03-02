@@ -27,6 +27,7 @@ class Shift
   field :check_out_time, type: Time
   field :actual_hours_worked, type: Float
   field :total_earnings, type: Float
+  field :applications, type: Array, default: [] # Array of application objects
 
   belongs_to :business
   belongs_to :worker, optional: true, class_name: 'User'
@@ -58,6 +59,8 @@ class Shift
   index({ business_profile_id: 1, status: 1 })
   index({ worker_profile_id: 1, status: 1 })
 
+  index({ "applications.worker_profile_id": 1 })
+
   scope :available, -> { where(status: 'available') }
   scope :assigned, -> { where(status: 'assigned') }
   scope :in_progress, -> { where(status: 'in_progress') }
@@ -65,7 +68,12 @@ class Shift
   scope :cancelled, -> { where(status: 'cancelled') }
   scope :by_business, ->(business_id) { where(business_profile_id: business_id) }
   scope :by_worker, ->(worker_id) { where(worker_profile_id: worker_id) }
-  scope :upcoming, -> { where(:start_time.gt => Time.current) }
+  scope :upcoming, -> { 
+    any_of(
+      { status: 'assigned', :start_time.gt => Time.current },
+      { status: 'in_progress', :end_time.gt => Time.current }
+    )
+  }
   scope :past, -> { where(:end_time.lt => Time.current) }
   scope :current, -> { where(:start_time.lte => Time.current, :end_time.gte => Time.current) }
   scope :for_business, ->(business_profile_id) { where(business_profile_id: business_profile_id) }
@@ -105,7 +113,8 @@ class Shift
   end
 
   def start_shift
-    return false unless can_start?(worker_profile_id)
+    return false unless worker_profile_id.present? && can_start?(worker_profile_id)
+    
     update(
       status: 'in_progress',
       check_in_time: Time.current
@@ -133,6 +142,38 @@ class Shift
       status: 'cancelled',
       notes: [notes, "Cancelled: #{reason}"].compact.join("\n").strip
     )
+  end
+
+  def add_application(worker)
+    application = {
+      worker_profile_id: worker.worker_profile.id,
+      worker_name: worker.full_name,
+      applied_at: Time.current,
+      status: 'pending'
+    }
+    
+    # First update the shift's status and worker
+    update(
+      status: 'assigned',
+      worker_profile_id: worker.worker_profile.id,
+      worker_name: worker.full_name
+    )
+    
+    # Then add the application to the array
+    push(applications: application)
+    
+    # Log the changes
+    Rails.logger.info("Shift #{id} assigned to worker #{worker.worker_profile.id}")
+    Rails.logger.info("Shift status updated to: #{status}")
+    Rails.logger.info("Application added: #{application.inspect}")
+  end
+
+  def get_applications
+    applications || []
+  end
+
+  def has_applied?(worker_profile_id)
+    applications.any? { |app| app['worker_profile_id'] == worker_profile_id }
   end
 
   private

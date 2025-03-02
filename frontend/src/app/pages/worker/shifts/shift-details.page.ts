@@ -184,9 +184,10 @@ export class ShiftDetailsPage implements OnInit {
   }
 
   canStartShift(shift: Shift): boolean {
-    if (!shift) return false;
-    // Only check if the status is assigned
-    return shift.status === 'assigned';
+    const now = new Date();
+    const shiftStart = new Date(shift.start_time);
+    const timeDiff = Math.abs(now.getTime() - shiftStart.getTime()) / (1000 * 60); // difference in minutes
+    return shift.status === 'assigned' && timeDiff <= 15;
   }
 
   canCompleteShift(shift: Shift): boolean {
@@ -195,44 +196,6 @@ export class ShiftDetailsPage implements OnInit {
 
   async startShift() {
     if (!this.shift) return;
-
-    const now = new Date();
-    const startTime = new Date(this.shift.start_time);
-    const endTime = new Date(this.shift.end_time);
-    const fifteenMinutesBefore = new Date(startTime.getTime() - 15 * 60000);
-
-    // Check timing when the button is clicked
-    if (now < fifteenMinutesBefore) {
-      const formattedTime = fifteenMinutesBefore.toLocaleTimeString([], { 
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true 
-      });
-      const formattedDate = fifteenMinutesBefore.toLocaleDateString([], {
-        weekday: 'long',
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric'
-      });
-
-      const toast = await this.toastCtrl.create({
-        message: `You can start this shift from ${formattedTime} on ${formattedDate}`,
-        duration: 5000,
-        color: 'warning'
-      });
-      await toast.present();
-      return;
-    }
-
-    if (now > endTime) {
-      const toast = await this.toastCtrl.create({
-        message: 'This shift has already ended',
-        duration: 5000,
-        color: 'warning'
-      });
-      await toast.present();
-      return;
-    }
 
     const alert = await this.alertController.create({
       header: 'Start Shift',
@@ -254,15 +217,7 @@ export class ShiftDetailsPage implements OnInit {
               },
               error: (error) => {
                 console.error('Error starting shift:', error);
-                let errorMessage = 'Error starting shift';
-                
-                if (error.error?.message) {
-                  errorMessage = error.error.message;
-                } else if (error.status === 422) {
-                  errorMessage = 'Cannot start shift at this time. Please check shift timing and status.';
-                }
-                
-                this.presentToast(errorMessage, 'danger');
+                this.presentToast('Error starting shift', 'danger');
               }
             });
           }
@@ -310,18 +265,19 @@ export class ShiftDetailsPage implements OnInit {
   getStatusColor(status: string): string {
     switch (status) {
       case 'assigned': return 'primary';
-      case 'in_progress': return 'tertiary';
+      case 'in_progress': return 'warning';
       case 'completed': return 'success';
       case 'cancelled': return 'danger';
       default: return 'medium';
     }
   }
 
-  private async presentToast(message: string, color: string) {
+  private async presentToast(message: string, color: string = 'success') {
     const toast = await this.toastCtrl.create({
       message,
-      duration: 3000,
-      color
+      duration: 2000,
+      color,
+      position: 'bottom'
     });
     await toast.present();
   }
