@@ -10,13 +10,20 @@ export interface WorkerProfile {
   availability?: any;
   rating?: number;
   completed_shifts_count?: number;
-  documents?: {
-    id: string;
-    type: string;
-    status: 'pending' | 'verified' | 'rejected';
-    url: string;
-    expiry_date?: string;
-  }[];
+  photo_url?: string;
+  documents?: WorkerDocument[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface WorkerDocument {
+  id: string;
+  type: string;
+  file_url: string;
+  expiry_date?: string;
+  status: 'pending' | 'uploaded' | 'expired';
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface User {

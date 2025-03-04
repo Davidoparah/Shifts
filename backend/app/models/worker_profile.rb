@@ -14,6 +14,7 @@ class WorkerProfile
 
   belongs_to :user
   has_many :incidents, dependent: :destroy
+  has_many :documents, dependent: :destroy
 
   validates :phone, presence: true
   validates :address, presence: true

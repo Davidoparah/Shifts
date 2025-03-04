@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
+import { Observable, of, throwError } from 'rxjs';
 import { catchError, tap, map } from 'rxjs/operators';
 import { BaseHttpService } from '../core/services/base-http.service';
 import { PaginatedResponse } from '../models/common.model';
@@ -26,10 +26,20 @@ export interface WorkerAvailability {
 }
 
 export interface WorkerDocument {
-  id: string;
+  id?: string;
   type: string;
   file: File;
+  file_url?: string;
   expiry_date?: string;
+  status?: 'pending' | 'uploaded' | 'expired';
+}
+
+export interface DocumentUploadResponse {
+  id: string;
+  type: string;
+  file_url: string;
+  expiry_date: string | null;
+  status: 'uploaded';
 }
 
 export interface WorkerProfileResponse {
@@ -48,7 +58,8 @@ export class WorkerService extends BaseHttpService {
     available: '/workers/available',
     rate: '/workers/:id/rate',
     documents: '/worker_profile/documents',
-    document: '/worker_profile/documents/:id'
+    document: '/worker_profile/documents/:id',
+    photo: '/worker_profile/photo'
   };
 
   constructor(
@@ -196,18 +207,51 @@ export class WorkerService extends BaseHttpService {
   }
 
   // Document Management
-  uploadDocument(document: WorkerDocument): Observable<WorkerProfile> {
+  uploadDocument(type: string, file: File, expiryDate?: string): Observable<DocumentUploadResponse> {
+    console.log('Uploading document:', { type, file, expiryDate });
+    
     const formData = new FormData();
-    formData.append('type', document.type);
-    formData.append('file', document.file);
-    if (document.expiry_date) {
-      formData.append('expiry_date', document.expiry_date);
+    formData.append('document[type]', type);
+    formData.append('document[file]', file);
+    if (expiryDate) {
+      formData.append('document[expiry_date]', expiryDate);
     }
-    return this.post<WorkerProfile>(this.endpoints['documents'], formData);
+
+    const url = `${this.apiUrl}${this.endpoints.documents}`;
+    console.log('Using upload URL:', url);
+    console.log('FormData contents:', formData);
+
+    return this.http.post<DocumentUploadResponse>(url, formData).pipe(
+      tap(response => console.log('Upload response:', response)),
+      catchError(error => {
+        console.error('Error uploading document:', error);
+        return throwError(() => error);
+      })
+    );
   }
 
-  deleteDocument(documentId: string): Observable<void> {
-    return this.delete<void>(this.buildUrl(this.endpoints['document'], { id: documentId }));
+  deleteDocument(type: string): Observable<void> {
+    const url = `${this.apiUrl}${this.endpoints.documents}/${type}`;
+    console.log('Deleting document:', { type, url });
+    return this.http.delete<void>(url).pipe(
+      tap(() => console.log('Document deleted successfully')),
+      catchError(error => {
+        console.error('Error deleting document:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  getDocuments(): Observable<WorkerDocument[]> {
+    const url = `${this.apiUrl}${this.endpoints.documents}`;
+    console.log('Fetching worker documents from:', url);
+    return this.http.get<WorkerDocument[]>(url).pipe(
+      tap(documents => console.log('Retrieved documents:', documents)),
+      catchError(error => {
+        console.error('Error fetching documents:', error);
+        return throwError(() => error);
+      })
+    );
   }
 
   // Shift Management
@@ -250,5 +294,11 @@ export class WorkerService extends BaseHttpService {
     created_at: string;
   }>> {
     return this.get(this.endpoints['ratings'], params);
+  }
+
+  updateProfilePhoto(file: File): Observable<any> {
+    const formData = new FormData();
+    formData.append('photo', file);
+    return this.http.post(this.endpoints.photo, formData);
   }
 } 

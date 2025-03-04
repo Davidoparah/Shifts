@@ -16,6 +16,7 @@ Rails.application.routes.draw do
       # Worker profile routes
       resource :worker_profile, only: [:show, :create, :update] do
         put 'availability', to: 'worker_profiles#update_availability'
+        resources :documents, only: [:index, :create, :destroy], controller: 'worker_documents'
       end
 
       # Shifts routes
@@ -37,6 +38,7 @@ Rails.application.routes.draw do
       # Business routes
       resources :businesses, only: [:show, :update] do
         resources :shifts, only: [:index, :create]
+        get 'worker/:worker_profile_id/documents', to: 'worker_documents#show_for_business', as: :worker_documents
       end
 
       # Admin routes
